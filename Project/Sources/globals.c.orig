@@ -1,0 +1,52 @@
+#include "types.h"
+#include "pilot.h"
+#include "sci.h"
+#include "hardware.h"
+#include "evse_smarts.h"
+<<<<<<< working copy
+#include "lin-cp.h"
+=======
+#include "lock.h"
+>>>>>>> merge rev
+
+int8_t SCI2_receive_buffer[255];
+uint8_t SCI2_receive_pointer = 0;
+uint8_t SCI2_receive_flag = FALSE;
+
+uint8_t debug_gate = FALSE;
+
+/*********<Pilot**********/ 
+PILOT_VOLTAGE PilotA_Voltage,PilotB_Voltage, Negative_PilotA_Voltage, Negative_PilotB_Voltage;
+PROX_VOLTAGE ProxA_Voltage, ProxB_Voltage;
+IEC_PROX_VOLTAGE IEC_ProxA_Voltage, IEC_ProxB_Voltage;
+
+volatile bool pilotA_in_range, PWMA_present, PWMA_5duty;
+volatile bool pilotB_in_range, PWMB_present, PWMB_5duty;
+
+uint8_t MajorityA_Duty_Cycle;
+uint8_t MajorityB_Duty_Cycle;
+
+uint8_t prox_states = PROX_IEC61851;
+/*********Pilot>**********/ 
+
+/*********<EVSE**********/
+struct evse_state_t evse_stateA, evse_stateB;  
+/*********EVSE>**********/
+
+/*********<SCI**********/ 
+circular_buffer print_c2buf;
+/*********SCI>**********/
+ 
+/*********<LIN**********/ 
+<<<<<<< working copy
+uint8_t LINPermitVoltage[2];
+l_u8 SeAvailAmpsMin[2];
+l_u8 SeStatusVer[2]= {2, 2}, SeStatusInit[2] = {2, 2}, SeStatusOp[2] = {2, 2}; // 3 = Not Available
+/*********LIN>**********/=======
+uint8_t LINPermitVoltage; 
+/*********LIN>**********/
+
+/*********<LOCK**********/ 
+enum LockStatusT lockStatus[2];
+/*********LOCK>**********/ 
+>>>>>>> merge rev

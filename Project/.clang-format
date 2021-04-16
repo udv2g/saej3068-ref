@@ -1,0 +1,10 @@
+---
+BasedOnStyle: LLVM
+AlignConsecutiveMacros: true
+AlignConsecutiveAssignments: true
+AllowShortIfStatementsOnASingleLine: WithoutElse
+AllowShortLoopsOnASingleLine: true
+ColumnLimit: 0
+IndentCaseLabels: true
+SortIncludes: false
+...

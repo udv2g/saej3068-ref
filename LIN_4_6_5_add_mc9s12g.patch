@@ -1,0 +1,115 @@
+diff -ru LIN_Stack/bsp/SCI/lin_isr.c LIN_Stack_add_mc9s12g/bsp/SCI/lin_isr.c
+--- LIN_Stack/bsp/SCI/lin_isr.c	2021-01-25 01:19:10.000000000 -0500
++++ LIN_Stack_add_mc9s12g/bsp/SCI/lin_isr.c	2021-02-25 13:55:44.700317000 -0500
+@@ -896,7 +896,7 @@
+ 
+ #endif /* End if (defined(_MC9S12VR64_H)||defined(_MC9S12VR32_H)) */
+ 
+-#if defined(_MC9S12GN32_H) || defined(_MC9S12G64_H)
++#if defined(_MC9S12GN32_H) || defined(_MC9S12G64_H) || defined(_MC9S12G96_H)   //added because missing
+ /*FUNCTION*--------------------------------------------------------------*//**
+ * @fn void TIM0_TIMER_ISR (void)
+ * @brief interrupt interrupt service routine for TIM timer
+@@ -919,7 +919,7 @@
+     TC0   = (TC0 + ((MCU_BUS_FREQ/1000000)*TIME_BASE_PERIOD) ) & 0xFFFF;
+ }
+ 
+-#endif /* End defined(_MC9S12GN32_H) || defined(_MC9S12G64_H) */
++#endif /* End defined(_MC9S12GN32_H) || defined(_MC9S12G64_H) || defined(_MC9S12G96_H) */
+ 
+ #if (defined(_MC9S12VR64_H) || defined(_MC9S12VR32_H) || defined(_MC9S12VRP64_H) || defined(_MC9S12VRP48_H))
+     #if (_SCI0_)
+diff -ru LIN_Stack/bsp/SCI/lin_lld_timesrv.c LIN_Stack_add_mc9s12g/bsp/SCI/lin_lld_timesrv.c
+--- LIN_Stack/bsp/SCI/lin_lld_timesrv.c	2019-10-23 00:35:58.000000000 -0400
++++ LIN_Stack_add_mc9s12g/bsp/SCI/lin_lld_timesrv.c	2021-02-25 13:55:44.710317000 -0500
+@@ -192,7 +192,7 @@
+     TSCR1 = 128;
+     /* End define for I32 */
+ 
+-#elif defined(_MC9S12GN32_H) || defined(_MC9S12G64_H)
++#elif defined(_MC9S12GN32_H) || defined(_MC9S12G64_H) || defined(_MC9S12G96_H)     //added because missing
+     /* Timer functions normally */
+     TSCR1 = 8;
+     /* Set up timer channel 0 */
+@@ -208,7 +208,7 @@
+     TC0 = (MCU_BUS_FREQ/1000000)*TIME_BASE_PERIOD;
+     /* Enable timer */
+     TSCR1 = TSCR1_TEN_MASK ;
+-    /* End define for GN32, G64 */
++     /* End define for GN32, G64, G96 */
+ 
+ #elif (defined(_MC9S12VR64_H) || defined(_MC9S12VR32_H))
+     /* Timer functions normally */
+diff -ru LIN_Stack/coreapi/lin_common_proto.c LIN_Stack_add_mc9s12g/coreapi/lin_common_proto.c
+--- LIN_Stack/coreapi/lin_common_proto.c	2021-02-24 02:02:50.000000000 -0500
++++ LIN_Stack_add_mc9s12g/coreapi/lin_common_proto.c	2021-03-03 09:23:16.000000000 -0500
+@@ -1591,6 +1591,7 @@
+             }
+         }
+     }
++#pragma MESSAGE DISABLE C12056  //debug info incorrect because of optimization or inline assembler
+ }
+ #endif /* End of (LIN_MODE == _MASTER_MODE_) */
+ /**
+diff -ru LIN_Stack/diagnostic/lin_diagnostic_service.c LIN_Stack_add_mc9s12g/diagnostic/lin_diagnostic_service.c
+--- LIN_Stack/diagnostic/lin_diagnostic_service.c	2021-01-25 01:19:10.000000000 -0500
++++ LIN_Stack_add_mc9s12g/diagnostic/lin_diagnostic_service.c	2021-02-25 13:55:44.743651000 -0500
+@@ -226,12 +226,12 @@
+             /*Byte 1: Supplier ID LSB; Byte 2: Supplier ID MSB*/
+             if(byte>0 && byte<3)
+             {
+-                byte = product_id.supplier_id >> ((byte-1)*8);
++                byte = (l_u8)(product_id.supplier_id >> ((byte-1)*8));    //added cast to fix "possible loss of data"
+             }
+             /*Byte 3: Function ID LSB; Byte 4: Function ID MSB*/
+             else if(byte>2 && byte<5)
+             {
+-                byte = product_id.function_id >> ((byte-3)*8);
++                byte = (l_u8)(product_id.function_id >> ((byte-3)*8));    //added cast to fix "possible loss of data"
+             }
+             /* Byte 5: Variant */
+             else
+@@ -886,12 +886,12 @@
+                 /*Byte 1: Supplier ID LSB; Byte 2: Supplier ID MSB*/
+                 if(byte>0 && byte<3)
+                 {
+-                    byte = (node_conf->product_id).supplier_id >> ((byte-1)*8);
++                    byte = (l_u8)((node_conf->product_id).supplier_id >> (unsigned char)((byte-1)*8));  //modified to supress warning
+                 }
+                 /*Byte 3: Function ID LSB; Byte 4: Function ID MSB*/
+                 else if(byte>2 && byte<5)
+                 {
+-                    byte = (node_conf->product_id).function_id >> ((byte-3)*8);
++                    byte = (l_u8)((node_conf->product_id).function_id >> (unsigned char)((byte-3)*8));  //modified to supress warning
+                 }
+                 /* Byte 5: Variant */
+                 else
+diff -ru LIN_Stack/lowlevel/lin.c LIN_Stack_add_mc9s12g/lowlevel/lin.c
+--- LIN_Stack/lowlevel/lin.c	2021-01-25 01:19:10.000000000 -0500
++++ LIN_Stack_add_mc9s12g/lowlevel/lin.c	2021-02-25 13:55:44.753651000 -0500
+@@ -58,7 +58,7 @@
+ 
+ /* Globle variable */
+ #if (LIN_MODE == _SLAVE_MODE_)
+-#if (_TL_FRAME_SUPPORT_ == _TL_SINGLE_FRAME__)
++#if (_TL_FRAME_SUPPORT_ == _TL_SINGLE_FRAME_)   //remove incorrect _ to fix warning
+ #if (_LIN_GPIO_ == 0) && !defined(_MC9S08SC4_H)
+ lin_message_timeout_type tl_check_timeout_type = LD_NO_CHECK_TIMEOUT;    /**< timeout type */
+ l_u16 tl_check_timeout = N_MAX_TIMEOUT_CNT;                            /**< timeout counter*/
+@@ -70,7 +70,7 @@
+ #if (LIN_MODE == _MASTER_MODE_)
+ l_u8        etf_collision_flag[LIN_NUM_OF_IFCS] = {0};
+ /* Extern globle variable */
+-#if (_TL_FRAME_SUPPORT_ == _TL_SINGLE_FRAME__)
++#if (_TL_FRAME_SUPPORT_ == _TL_SINGLE_FRAME_)
+ lin_message_timeout_type tl_check_timeout_type_array[LIN_NUM_OF_IFCS] = {LD_NO_CHECK_TIMEOUT};
+ l_u16 tl_check_timeout_array[LIN_NUM_OF_IFCS] = {N_MAX_TIMEOUT_CNT};
+ #endif
+@@ -1038,6 +1038,7 @@
+     }
+ 
+     return (ret);
++#pragma MESSAGE DISABLE C12056  //debug info incorrect because of optimization or inline assembler
+ }
+ 
+ l_u8 lin_checksum

@@ -1,0 +1,25 @@
+#ifndef _CONFIG_H
+#define _CONFIG_H
+
+//#define CH_A_ONLY
+//#define LOGGING
+#define LIN_TRANSCEIVER
+
+//#define J1939_REQD_FOR_CHARGE
+
+#define EV_CONFIG
+/****<DO NOT MODIFY******/
+#ifdef EV_CONFIG
+  #define SE_CODE 0
+  #define EV_CODE 1
+#else
+  #define SE_CONFIG
+  #define SE_CODE 1
+  #define EV_CODE 0
+#endif
+/****DO NOT MODIFY>******/
+
+#define MAX_RATED_CURRENT 80
+#define INITIALIZATION_DELAY 10000  
+
+#endif

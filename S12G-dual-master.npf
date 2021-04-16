@@ -1,0 +1,51 @@
+/*** GENERAL DEFINITION ***/
+LIN_node_config_file;
+
+/*** MCU DEFINITION ***/
+mcu  {         /* Must check the correct MCU name */
+	mcu_name = MC9S12G128;	
+	bus_clock = 24000000;		/* Frequency bus of system Hz*/
+	xgate_support = no;		/* Support XGATE Co-Processor */
+}
+
+/*** LIN HARDWARE DEFINITION ***/
+/* SCI config */  
+sci{
+	s12_sci0{
+  		sci_channel	= 0;
+	}
+	s12_sci1{
+  		sci_channel	= 1;
+	}	
+}
+
+/*** NETWORK DEFINITION ***/
+network {
+	idle_timeout = 5s;
+	diagnostic_class = 1;
+	max_message_length = 8;
+	LI0{
+		node = EVSE_Master;		/* Name of node described in LDF (must check consistence with LDF) */
+		file = "J3068_20kbpsVer11_3.ldf";			/* Path to LDF file */
+		device = s12_sci0;		/* Identifier to LIN Hardware, related to LIN HARDWARE DEFINITION */
+		support_sid    {
+         READ_BY_IDENTIFIER      = 178;
+         ASSIGN_FRAME_ID_RANGE   = 183;
+         ASSIGN_NAD              = 176;
+         CONDITIONAL_CHANGE_NAD  = 179;
+         SAVE_CONFIGURATION      = 182;
+         }
+	}
+	LI1{
+		node = EVSE_Master;		/* Name of node described in LDF (must check consistence with LDF) */
+		file = "J3068_20kbpsVer11_3B.ldf";			/* Path to LDF file */
+		device = s12_sci1;		/* Identifier to LIN Hardware, related to LIN HARDWARE DEFINITION */
+		support_sid    {
+         READ_BY_IDENTIFIER      = 178;
+         ASSIGN_FRAME_ID_RANGE   = 183;
+         ASSIGN_NAD              = 176;
+         CONDITIONAL_CHANGE_NAD  = 179;
+         SAVE_CONFIGURATION      = 182;
+         }
+	}
+}
