@@ -14,7 +14,7 @@ void init_hardware(void)  {
   InitADC();
   InitRTI();
   InitSCIBuffers();
-  SCIOpenCommunication(SCI2_BUF, 115200, FALSE, SCI_RIE_ON); // Initialize SCI2 with 19200 baud and interrupts
+  SCIOpenCommunication(SCI2_BUF, UART_BAUD, FALSE, SCI_RIE_ON); // Initialize SCI2 with configured baud and interrupts
   init_pwm();
 #ifdef EV_CONFIG
   j1939_init_hardware();
@@ -98,8 +98,11 @@ void init_io(void)  {
   DDRJ_DDRJ5 = OUTPUT;
   DDRJ_DDRJ6 = OUTPUT;
   DDRJ_DDRJ7 = OUTPUT;        //contactor control ch A
+  
+  PTJ = 0;                    //drive all contactor controls low
 #endif
 
+  VMU_WAKEUP = 0;
   SLEEP_SHDN = 0;             //Enable devices shut down in sleep
 
   LIN_A_ENABLE = 1;           //enable LIN A

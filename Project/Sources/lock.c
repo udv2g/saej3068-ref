@@ -8,7 +8,6 @@
 
 // 0 for locked and 1 for undefined
 
-static uint8_t unplugged = 0;
 static lock_status_t lockStatus[2] = {unknown, unknown};
 static bool statusMismatch[2] = {FALSE, FALSE};
 
@@ -158,13 +157,8 @@ uint32_t setPresumedLockedB(void *a) {
 #define setPresumedLocked(ch) ((ch) ? setPresumedLockedB : setPresumedLockedA)
 
 uint32_t setPresumedUnlockedA(void *a) {
-  if (unplugged) {
-    lockStatus[A] = unlocked;
-    statusMismatch[A] = FALSE;
-    PrintConsoleString("Succesfully unlocked A\r\n", 0);
-  }
   // if pin says not locked and disconnected, then actually unlocked
-  else if (UC_SENSE_SIGNAL_A_LOCK && (IEC_Prox_Voltage[A] == IEC_DISCONNECTED)) {
+  if (UC_SENSE_SIGNAL_A_LOCK && (IEC_Prox_Voltage[A] == IEC_DISCONNECTED)) {
     lockStatus[A] = unlocked;
     statusMismatch[A] = FALSE;
     PrintConsoleString("Succesfully unlocked A\r\n", 0);
@@ -185,11 +179,7 @@ uint32_t setPresumedUnlockedA(void *a) {
 }
 
 uint32_t setPresumedUnlockedB(void *a) {
-  if (unplugged) {
-    lockStatus[B] = unlocked;
-    statusMismatch[B] = FALSE;
-    PrintConsoleString("Succesfully unlocked B\r\n", 0);
-  } else if (UC_SENSE_SIGNAL_B_LOCK && (IEC_Prox_Voltage[B] == IEC_DISCONNECTED)) {
+  if (UC_SENSE_SIGNAL_B_LOCK && (IEC_Prox_Voltage[B] == IEC_DISCONNECTED)) {
     lockStatus[B] = unlocked;
     statusMismatch[B] = FALSE;
     PrintConsoleString("Succesfully unlocked B\r\n", 0);
@@ -212,16 +202,24 @@ uint32_t setPresumedUnlockedB(void *a) {
 ////////////////////////////////////////////////////
 
 uint32_t retryLockA(void *a) {
-  startDrivingLock(A);
-  schedule_and_reset(DRIVE_TIME, endDrivingA, NULL);
-  schedule_and_reset(DRIVE_TIME, setPresumedLockedA, NULL);
+  if (IEC_Prox_Voltage[A] != IEC_DISCONNECTED)  { 
+    startDrivingLock(A);
+    schedule_and_reset(DRIVE_TIME, endDrivingA, NULL);
+    schedule_and_reset(DRIVE_TIME, setPresumedLockedA, NULL);
+  } else  {
+    lockStatus[A] = unlocked;
+  }
   return 0;
 }
 
 uint32_t retryLockB(void *a) {
-  startDrivingLock(B);
-  schedule_and_reset(DRIVE_TIME, endDrivingB, NULL);
-  schedule_and_reset(DRIVE_TIME, setPresumedLockedB, NULL);
+  if (IEC_Prox_Voltage[B] != IEC_DISCONNECTED)  {
+    startDrivingLock(B);
+    schedule_and_reset(DRIVE_TIME, endDrivingB, NULL);
+    schedule_and_reset(DRIVE_TIME, setPresumedLockedB, NULL);
+  } else  {
+    lockStatus[B] = unlocked;
+  }
   return 0;
 }
 

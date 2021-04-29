@@ -10,7 +10,7 @@
 #define J1939_XMIT
 #define J1939_SEND_SEINFO
 
-#define PRE_RELEASE_HARDWARE
+//#define PRE_RELEASE_HARDWARE
 
 #define EV_CONFIG
 /****<DO NOT MODIFY******/
@@ -18,6 +18,8 @@
   #define SE_CONFIG
 #endif
 /****DO NOT MODIFY>******/
+
+#define UART_BAUD            115200
 
 #define INITIALIZATION_DELAY 10000
 #define RTI_TICKS_PER_SECOND 926ul  //1000/1.08ms  This still runs long for some reason  FIXME?

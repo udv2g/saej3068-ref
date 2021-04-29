@@ -176,13 +176,15 @@ void InitializeLINvariables(uint8_t ch) {
   LW(ch, l_u8, EvStatusVer, EvStatusVer[ch]);
   LW(ch, l_u8, EvStatusInit, EvStatusInit[ch]);
   LW(ch, l_u8, EvStatusOp, EvStatusOp[ch]);
-  
+#pragma MESSAGE DISABLE C4002 //result not used -- ternary operator should not be used for assignements
+  l_bool_wr_LI0_EvAwake(1);
   
   /* for (i = 0; i < 5; i++) // Compiler says this is never used
   { SeSupportedVersion[i] == 255;
   } */
 
 }
+#pragma MESSAGE WARNING C4002
 
 /*uint32_t LINCP_Timeout(void *param) {
   DetermineEvState(BSC_TIMEOUT);   // Also need to clear variables to request to get back to Ver
@@ -260,19 +262,32 @@ void DetermineLINCPState(uint8_t ch, SCHEDULE_PICKER_EVENTS SchedulePickerMessag
     SeSupportedVersion[ch][3] = LR(ch, l_u8, SeSupportedVersion4);
     SeSupportedVersion[ch][4] = LR(ch, l_u8, SeSupportedVersion5); 
     // SeVersionPageNumber = LR(ch,l_u8,SeVersionPageNumber);
-    NoMatchCount[ch]          = 0;
-    for (i = 0; i < 5; i++) {
-      if (SeSupportedVersion[ch][i] == EvCommVer[ch]) { // This handles the Ver schedule.  It ignores the page number so should be able to handle multiple pages
-        LW(ch, l_u8, EvSelectedVersion, EvCommVer[ch]); // This only works as long as only a single version (2 or 1) is supported.  Otherwise, a propper, page ordered
-        break;                                          // list needs to be created.
+    
+    if ((SeStatusVer[ch] == Incomplete || EvCommVer[ch] != NotAvail_8bit) && SeStatusInit[ch] == Incomplete && SeStatusOp[ch] == Deny_V) {
+      NoMatchCount[ch]          = 0;
+      for (i = 0; i < 5; i++) {
+        if (SeSupportedVersion[ch][i] == EvCommVer[ch]) { // This handles the Ver schedule.  It ignores the page number so should be able to handle multiple pages
+          LW(ch, l_u8, EvSelectedVersion, EvCommVer[ch]); // This only works as long as only a single version (2 or 1) is supported.  Otherwise, a propper, page ordered
+          break;                                          // list needs to be created.
+        }
       }
-    }
-    if ((SeCommVer[ch] == EvCommVer[ch]) && (SeCommVer[ch] == SeSupportedVersion[ch][i])) {
-      EvStatusVer[ch] = Complete;
-      schedule_if_unscheduled(T_INIT, init_timeout(ch), NULL);
-      DetermineEvState(ch, BSC_ESTABLISHED);
-      PrintConsoleString("\t  Version Negotiation successful at EV \r\n", 0); // Debug
-      unschedule(version_timeout(ch));
+      if ((SeCommVer[ch] == EvCommVer[ch]) && (SeCommVer[ch] == SeSupportedVersion[ch][i])) {
+        EvStatusVer[ch] = Complete;
+        schedule_if_unscheduled(T_INIT, init_timeout(ch), NULL);
+        DetermineEvState(ch, BSC_ESTABLISHED);
+        PrintConsoleString("\t  Version Negotiation successful at EV \r\n", 0); // Debug
+        unschedule(version_timeout(ch));
+      }
+    } else  {
+      PrintConsoleString("Incorrect SE Status, V:" ,0);
+      PrintConsoleHex(SeStatusVer[ch]);
+      PrintConsoleString(" I:",0);
+      PrintConsoleHex(SeStatusInit[ch]);
+      PrintConsoleString(" O:",0);
+      PrintConsoleHex(SeStatusOp[ch]);
+      PrintConsoleString("\r\n",0);
+      EvStatusVer[ch] = Error2bit;
+      (void)set_priority_info_code(ch, EVINFOENTRY_VERSION_FAILS);    
     }
     
     LW(ch, l_u8, EvStatusVer, EvStatusVer[ch]);
@@ -649,7 +664,17 @@ void DetermineLINCPState(uint8_t ch, SCHEDULE_PICKER_EVENTS SchedulePickerMessag
       if (LFT(ch, EvVersionList)) // If EV is responding, process Version signals, otherwise wait for wakeup
       {
         ReadEvVersionListSignals(ch);
-        if (EvCommVer[ch] == J3068) // EV picked a supported version
+        if (!((EvStatusVer[ch] == Incomplete || EvCommVer[ch] != NotAvail_8bit) && SeStatusInit[ch] == Incomplete && SeStatusOp[ch] == Deny_V)) {
+          PrintConsoleString("Incorrect EV Status, V:" ,0);
+          PrintConsoleHex(EvStatusVer[ch]);
+          PrintConsoleString(" I:",0);
+          PrintConsoleHex(EvStatusInit[ch]);
+          PrintConsoleString(" O:",0);
+          PrintConsoleHex(EvStatusOp[ch]);
+          PrintConsoleString("\r\n",0);
+          SeStatusVer[ch] = Error2bit;
+          (void)set_priority_info_code(ch, SEINFOENTRY_VERSION_FAILS);  
+        } else if (EvCommVer[ch] == J3068) // EV picked a supported version
         {
           SeCommVer[ch] = EvCommVer[ch]; // SE accepts EV's choice
           //LW(ch,l_u8,SeInfoEntry1,NotAvail_8bit); // Clear any info code that might have been set previously
