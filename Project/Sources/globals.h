@@ -14,9 +14,10 @@ extern uint8_t SCI2_receive_flag;
 extern uint8_t debug_gate;
 extern bool timebase_flag;
 
+extern bool j1939_charge_desired;
+
 /*********<Pilot**********/
 extern PILOT_VOLTAGE Pilot_Voltage[], Negative_Pilot_Voltage[];
-extern PROX_VOLTAGE Prox_Voltage[];
 extern IEC_PROX_VOLTAGE IEC_Prox_Voltage[];
 
 extern volatile bool pilot_in_range[], PWM_present[], PWM_5duty[];

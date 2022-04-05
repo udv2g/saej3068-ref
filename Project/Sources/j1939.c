@@ -24,44 +24,10 @@ static HSC1_t last_HSC1;
 static j1939_messages_received_t j1939_messages_received;
 
 void j1939_init_hardware(void) {
-  InitCAN(NORMAL_MODE, CAN250KBAUD);
+  InitCAN_ExtendedIDs(CAN0_BASE_ADDRESS, NORMAL_MODE, CAN250KBAUD, CAN_ID_PTRN_1, CAN_MASK_PTRN_1, CAN_ID_PTRN_2, CAN_MASK_PTRN_2);
 
   mem_init_ff(&j1939_messages_to_send, sizeof(j1939_messages_to_send_t));
   mem_init_ff(&last_HSC1, sizeof(HSC1_t));
-}
-
-int8_t send_command_CAN(uint32_t id, uint8_t *data, uint8_t msg_size) {
-  int i;
-  uint8_t tb;
-  uint8_t *dest = &CANTXDSR0;
-
-  //PrintConsoleString("sending CAN\r\n",0);
-
-  if (!CANTFLG) {
-    CANTARQ = 0x7;
-    //this packet will be lost but but next time it should be clear
-    return -1; //you could return fail here
-  }
-
-  CANTBSEL = CANTFLG;  // make an empty transmit buffer accessible
-  tb       = CANTBSEL; //see which one your got
-
-  // Write the identifier
-  CANTXIDR0 = ((id >> 21) & 0xFF);
-  CANTXIDR1 = ((id >> 13) & 0xE0) | 0x18 | ((id >> 15) & 0x07);
-  CANTXIDR2 = ((id >> 7) & 0xFF);
-  CANTXIDR3 = ((id << 1) & 0xFE);
-
-  // Write the data
-  for (i = 0; i < msg_size; ++i) {
-    dest[i] = data[i];
-  }
-
-  // Finally write the msg size
-  CANTXDLR = msg_size;
-
-  CANTFLG = tb; // buffer marked by tb ready for transmission
-  return tb;
 }
 
 uint32_t timeout_HSC1(void *ptr) {
@@ -73,9 +39,26 @@ uint32_t timeout_HSC1(void *ptr) {
 
 int handle_HSC1(void *msg) {
   HSC1_t *HSC1_msg = (HSC1_t *)msg;
+  bool enable = FALSE;
+  
+  if (HSC1_msg->HVESChargeConsent == J1939_SPN10148_ALLOWED) {
+    enable = TRUE;
+  }
+  
+  switch(HSC1_msg->HybridPropulsionModeRequest) {
+    case J1939_SPN7889_INCREASING:
+      j1939_charge_desired = TRUE;
+      break;
+    case J1939_SPN7889_ONLY:
+      enable = FALSE;
+      j1939_charge_desired = FALSE;
+      break;
+    default:
+      j1939_charge_desired = FALSE;
+  }  
 
 #ifdef J1939_REQD_FOR_CHARGE
-  if (HSC1_msg->HVESChargeConsent == J1939_SPN10148_ALLOWED) {
+  if (enable) {
     enable_desire_to_charge(A, CHARGING_DISABLED_J1939);
     enable_desire_to_charge(B, CHARGING_DISABLED_J1939);
     schedule_and_reset(J1939_1S_MESSAGE_TIMEOUT, timeout_HSC1, NULL);
@@ -102,8 +85,8 @@ int handle_HSS1(void *msg) {
 uint32_t timeout_EVSE1AC3PL_A(void *ptr) {
 #pragma MESSAGE DISABLE C2705 //possible loss of data.  this is related to the flags somehow.
   l_u8_wr_LI0_EvPresentCurrentL1(0xFF);
-  l_u8_wr_LI0_EvPresentCurrentL2(0xFF);
-  l_u8_wr_LI0_EvPresentCurrentL3(0xFF);
+  l_u8_wr_LI0_EvPresentCurrentL2(SP(0xFF,0));
+  l_u8_wr_LI0_EvPresentCurrentL3(SP(0xFF,0));
   l_u8_wr_LI0_EvPresentCurrentN(0xFF);
   //PrintConsoleString("chA-PC-Reset\r\n",0);
   return 0;
@@ -116,8 +99,8 @@ int handle_EVSE1AC3PL_A(void *msg) {
 
 #pragma MESSAGE DISABLE C2705 //possible loss of data. Duh!
   l_u8_wr_LI0_EvPresentCurrentL1((l_u8)(EVSE1AC3PL_A_msg->HVESS_Charger_RMS_current_L1 >> 4)); //reduce resolution by factor of 16
-  l_u8_wr_LI0_EvPresentCurrentL2((l_u8)(EVSE1AC3PL_A_msg->HVESS_Charger_RMS_current_L2 >> 4)); //reduce resolution by factor of 16
-  l_u8_wr_LI0_EvPresentCurrentL3((l_u8)(EVSE1AC3PL_A_msg->HVESS_Charger_RMS_current_L3 >> 4)); //reduce resolution by factor of 16
+  l_u8_wr_LI0_EvPresentCurrentL2(SP((l_u8)(EVSE1AC3PL_A_msg->HVESS_Charger_RMS_current_L2 >> 4),0)); //reduce resolution by factor of 16
+  l_u8_wr_LI0_EvPresentCurrentL3(SP((l_u8)(EVSE1AC3PL_A_msg->HVESS_Charger_RMS_current_L3 >> 4),0)); //reduce resolution by factor of 16
   l_u8_wr_LI0_EvPresentCurrentN((l_u8)(EVSE1AC3PL_A_msg->HVESS_Charger_RMS_current_N >> 4));   //reduce resolution by factor of 16
   schedule_and_reset(J1939_100MS_MESSAGE_TIMEOUT, timeout_EVSE1AC3PL_A, NULL);
 
@@ -131,8 +114,8 @@ int handle_EVSE1AC3PL_A(void *msg) {
 uint32_t timeout_EVSE1AC3PL_B(void *ptr) {
 #pragma MESSAGE DISABLE C2705 //possible loss of data.
   l_u8_wr_LI1_EvPresentCurrentL1(0xFF);
-  l_u8_wr_LI1_EvPresentCurrentL2(0xFF);
-  l_u8_wr_LI1_EvPresentCurrentL3(0xFF);
+  l_u8_wr_LI1_EvPresentCurrentL2(SP(0xFF,0));
+  l_u8_wr_LI1_EvPresentCurrentL3(SP(0xFF,0));
   l_u8_wr_LI1_EvPresentCurrentN(0xFF);
   return 0;
 }
@@ -142,8 +125,8 @@ int handle_EVSE1AC3PL_B(void *msg) {
 
 #pragma MESSAGE DISABLE C2705 //possible loss of data. Duh!
   l_u8_wr_LI1_EvPresentCurrentL1((l_u8)(EVSE1AC3PL_B_msg->HVESS_Charger_RMS_current_L1 >> 4)); //reduce resolution by factor of 16
-  l_u8_wr_LI1_EvPresentCurrentL2((l_u8)(EVSE1AC3PL_B_msg->HVESS_Charger_RMS_current_L2 >> 4)); //reduce resolution by factor of 16
-  l_u8_wr_LI1_EvPresentCurrentL3((l_u8)(EVSE1AC3PL_B_msg->HVESS_Charger_RMS_current_L3 >> 4)); //reduce resolution by factor of 16
+  l_u8_wr_LI1_EvPresentCurrentL2(SP((l_u8)(EVSE1AC3PL_B_msg->HVESS_Charger_RMS_current_L2 >> 4),0)); //reduce resolution by factor of 16
+  l_u8_wr_LI1_EvPresentCurrentL3(SP((l_u8)(EVSE1AC3PL_B_msg->HVESS_Charger_RMS_current_L3 >> 4),0)); //reduce resolution by factor of 16
   l_u8_wr_LI1_EvPresentCurrentN((l_u8)(EVSE1AC3PL_B_msg->HVESS_Charger_RMS_current_N >> 4));   //reduce resolution by factor of 16
   schedule_and_reset(J1939_100MS_MESSAGE_TIMEOUT, timeout_EVSE1AC3PL_B, NULL);
 
@@ -159,7 +142,7 @@ int handle_EVSE1AC3PL_B(void *msg) {
 #else
 #define CHANNEL_B_ACTIVE 1
 #endif
-j1939_msg_dispatcher_t j1939_msg_dispatch_tbl[] = {
+can_msg_dispatcher_t j1939_msg_dispatch_tbl[] = {
     {
         J1939_ID_HSC1 | (J1939_CHANNEL_A_INLET_ID << 8) | J1939_ECU_ID,
         &j1939_messages_received.HSC1,
@@ -202,45 +185,12 @@ void print_msg(uint32_t id, uint8_t *buf, int start, int end) {
   PrintConsoleString("\r\n", 0);
 }
 
-uint32_t parse_message_CAN() {
-  int i;
-  uint32_t id;
-  uint8_t msg_length;
-  j1939_msg_dispatcher_t *curr_msg_dispatcher;
-
-  //id = CANRIDR0; // Read the higher order bits 8 bits of the id
-  //id = (id << 3) | ((CANRIDR1 >> 5) & 0x07); // Read the lower order 3 bits
-
-  // EXTEDED MESSAGES HANDLING
-  id = 0;
-  id = CANRXIDR0;
-  id = (id << 6) | ((CANRXIDR1 & 0xE0) >> 2) | (CANRXIDR1 & 0x07);
-  id = (id << 8) | (CANRXIDR2 & 0xFF);
-  id = (id << 7) | ((CANRXIDR3 >> 1) & 0x7F);
-
-  msg_length = CANRXDLR;
-
-  // Ok, let's try to parse this message
-  for (i = 0; i < j1939_msg_dispatch_tbl_SIZE; ++i) {
-    curr_msg_dispatcher = &j1939_msg_dispatch_tbl[i];
-    if (curr_msg_dispatcher->id == id) {
-      if (curr_msg_dispatcher->process_message_p) {
-        (void)curr_msg_dispatcher->parser(curr_msg_dispatcher->obj, &CANRXDSR0, 0, msg_length);
-        (void)curr_msg_dispatcher->handler(curr_msg_dispatcher->obj);
-      }
-      break;
-    }
-  }
-
-  return 0;
-}
-
 #pragma INLINE
-void CAN_RXRoutine(void) {
+void CAN0_RXRoutine(void) {
 
   //PrintConsoleString("receiving CAN\r\n",0);
 
-  (void)parse_message_CAN();
+  (void)parse_message_CAN(CAN0_BASE_ADDRESS, EXTENDED_IDENTIFIERS, j1939_msg_dispatch_tbl_SIZE, j1939_msg_dispatch_tbl);
 }
 
 // clang-format off
@@ -439,21 +389,21 @@ void send_j1939_messages() {
   //EVSEACS1, 100ms
   if (loop_counter % 2) {
     (void)write_EVSE1ACS1(&command_buf[0], &j1939_messages_to_send.EVSE1ACS1_A);
-    ret_value = send_command_CAN(J1939_ID_EVSE1ACS1 | J1939_CHANNEL_A_INLET_ID, command_buf, 8);
+    ret_value = send_command_CAN(CAN0_BASE_ADDRESS, EXTENDED_IDENTIFIERS, J1939_ID_EVSE1ACS1 | J1939_CHANNEL_A_INLET_ID, command_buf, 8);
 
     if (ret_value == -1) {
       PrintConsoleString("Error sending EVSE1ACS1 " CH_A_STRING "CAN message\r\n", 0);
-      InitCAN(NORMAL_MODE, CAN250KBAUD);
+      InitCAN_ExtendedIDs(CAN0_BASE_ADDRESS, NORMAL_MODE, CAN250KBAUD, CAN_ID_PTRN_1, CAN_MASK_PTRN_1, CAN_ID_PTRN_2, CAN_MASK_PTRN_2);
     }
   }
 #ifndef CH_A_ONLY
   else {
     (void)write_EVSE1ACS1(&command_buf[0], &j1939_messages_to_send.EVSE1ACS1_B);
-    ret_value = send_command_CAN(J1939_ID_EVSE1ACS1 | J1939_CHANNEL_B_INLET_ID, command_buf, 8);
+    ret_value = send_command_CAN(CAN0_BASE_ADDRESS, EXTENDED_IDENTIFIERS, J1939_ID_EVSE1ACS1 | J1939_CHANNEL_B_INLET_ID, command_buf, 8);
 
     if (ret_value == -1) {
       PrintConsoleString("Error sending EVSE1ACS1 CH B CAN message\r\n", 0);
-      InitCAN(NORMAL_MODE, CAN250KBAUD);
+      InitCAN_ExtendedIDs(CAN0_BASE_ADDRESS, NORMAL_MODE, CAN250KBAUD, CAN_ID_PTRN_1, CAN_MASK_PTRN_1, CAN_ID_PTRN_2, CAN_MASK_PTRN_2);
     }
   }
 #endif
@@ -461,33 +411,33 @@ void send_j1939_messages() {
   //HSI1, 1s
   if (loop_counter == 2) {
     (void)write_HSI1(&command_buf[0], &j1939_messages_to_send.HSI1);
-    ret_value = send_command_CAN(J1939_ID_HSI1 | J1939_CHANNEL_A_INLET_ID, command_buf, 8);
+    ret_value = send_command_CAN(CAN0_BASE_ADDRESS, EXTENDED_IDENTIFIERS, J1939_ID_HSI1 | J1939_CHANNEL_A_INLET_ID, command_buf, 8);
 
     if (ret_value == -1) {
       PrintConsoleString("Error sending HSI1 CAN message\r\n", 0);
-      InitCAN(NORMAL_MODE, CAN250KBAUD);
+      InitCAN_ExtendedIDs(CAN0_BASE_ADDRESS, NORMAL_MODE, CAN250KBAUD, CAN_ID_PTRN_1, CAN_MASK_PTRN_1, CAN_ID_PTRN_2, CAN_MASK_PTRN_2);
     }
   }
 
   //EVSE1S1, 1s
   if (loop_counter == 4) {
     (void)write_EVSE1S1(&command_buf[0], &j1939_messages_to_send.EVSE1S1_A);
-    ret_value = send_command_CAN(J1939_ID_EVSE1S1 | J1939_CHANNEL_A_INLET_ID, command_buf, 8);
+    ret_value = send_command_CAN(CAN0_BASE_ADDRESS, EXTENDED_IDENTIFIERS, J1939_ID_EVSE1S1 | J1939_CHANNEL_A_INLET_ID, command_buf, 8);
 
     if (ret_value == -1) {
       PrintConsoleString("Error sending EVSE1S1 " CH_A_STRING "CAN message\r\n", 0);
-      InitCAN(NORMAL_MODE, CAN250KBAUD);
+      InitCAN_ExtendedIDs(CAN0_BASE_ADDRESS, NORMAL_MODE, CAN250KBAUD, CAN_ID_PTRN_1, CAN_MASK_PTRN_1, CAN_ID_PTRN_2, CAN_MASK_PTRN_2);
     }
   }
 
   //EVSE1ACSV, "On Request", send every second
   if (loop_counter == 6) {
     (void)write_EVSE1ACSV(&command_buf[0], &j1939_messages_to_send.EVSE1ACSV_A);
-    ret_value = send_command_CAN(J1939_ID_EVSE1ACSV | J1939_CHANNEL_A_INLET_ID, command_buf, 8);
+    ret_value = send_command_CAN(CAN0_BASE_ADDRESS, EXTENDED_IDENTIFIERS, J1939_ID_EVSE1ACSV | J1939_CHANNEL_A_INLET_ID, command_buf, 8);
 
     if (ret_value == -1) {
       PrintConsoleString("Error sending EVSE1ACSV " CH_A_STRING "CAN message\r\n", 0);
-      InitCAN(NORMAL_MODE, CAN250KBAUD);
+      InitCAN_ExtendedIDs(CAN0_BASE_ADDRESS, NORMAL_MODE, CAN250KBAUD, CAN_ID_PTRN_1, CAN_MASK_PTRN_1, CAN_ID_PTRN_2, CAN_MASK_PTRN_2);
     }
   }
 
@@ -495,11 +445,11 @@ void send_j1939_messages() {
   //EVSE1S1, 1s
   if (loop_counter == 8) {
     (void)write_EVSE1S1(&command_buf[0], &j1939_messages_to_send.EVSE1S1_B);
-    ret_value = send_command_CAN(J1939_ID_EVSE1S1 | J1939_CHANNEL_B_INLET_ID, command_buf, 8);
+    ret_value = send_command_CAN(CAN0_BASE_ADDRESS, EXTENDED_IDENTIFIERS, J1939_ID_EVSE1S1 | J1939_CHANNEL_B_INLET_ID, command_buf, 8);
 
     if (ret_value == -1) {
       PrintConsoleString("Error sending EVSE1S1 CH B CAN message\r\n", 0);
-      InitCAN(NORMAL_MODE, CAN250KBAUD);
+      InitCAN_ExtendedIDs(CAN0_BASE_ADDRESS, NORMAL_MODE, CAN250KBAUD, CAN_ID_PTRN_1, CAN_MASK_PTRN_1, CAN_ID_PTRN_2, CAN_MASK_PTRN_2);
     }
   }
 
@@ -507,11 +457,11 @@ void send_j1939_messages() {
   if (loop_counter == 10) {
     //printf("EVSE1ACSV-B\t");
     (void)write_EVSE1ACSV(&command_buf[0], &j1939_messages_to_send.EVSE1ACSV_B);
-    ret_value = send_command_CAN(J1939_ID_EVSE1ACSV | J1939_CHANNEL_B_INLET_ID, command_buf, 8);
+    ret_value = send_command_CAN(CAN0_BASE_ADDRESS, EXTENDED_IDENTIFIERS, J1939_ID_EVSE1ACSV | J1939_CHANNEL_B_INLET_ID, command_buf, 8);
 
     if (ret_value == -1) {
       PrintConsoleString("Error sending EVSE1ACSV CH B CAN message\r\n", 0);
-      InitCAN(NORMAL_MODE, CAN250KBAUD);
+      InitCAN_ExtendedIDs(CAN0_BASE_ADDRESS, NORMAL_MODE, CAN250KBAUD, CAN_ID_PTRN_1, CAN_MASK_PTRN_1, CAN_ID_PTRN_2, CAN_MASK_PTRN_2);
     }
   }
 #endif
@@ -520,22 +470,22 @@ void send_j1939_messages() {
   //Send InletProxAndSeInfo once per second if desired
   if (loop_counter == 12) {
     (void)write_InletProxAndSeInfo(&command_buf[0], &j1939_messages_to_send.ProxSEInfo_A);
-    ret_value = send_command_CAN(J1939_ID_INLETPROXANDSEINFO | J1939_CHANNEL_A_INLET_ID, command_buf, 8);
+    ret_value = send_command_CAN(CAN0_BASE_ADDRESS, EXTENDED_IDENTIFIERS, J1939_ID_INLETPROXANDSEINFO | J1939_CHANNEL_A_INLET_ID, command_buf, 8);
 
     if (ret_value == -1) {
       PrintConsoleString("Error sending InletProxAndSeInfo " CH_A_STRING "CAN message\r\n", 0);
-      InitCAN(NORMAL_MODE, CAN250KBAUD);
+      InitCAN_ExtendedIDs(CAN0_BASE_ADDRESS, NORMAL_MODE, CAN250KBAUD, CAN_ID_PTRN_1, CAN_MASK_PTRN_1, CAN_ID_PTRN_2, CAN_MASK_PTRN_2);
     }
   }
 
 #ifndef CH_A_ONLY
   if (loop_counter == 14) {
     (void)write_InletProxAndSeInfo(&command_buf[0], &j1939_messages_to_send.ProxSEInfo_B);
-    ret_value = send_command_CAN(J1939_ID_INLETPROXANDSEINFO | J1939_CHANNEL_B_INLET_ID, command_buf, 8);
+    ret_value = send_command_CAN(CAN0_BASE_ADDRESS, EXTENDED_IDENTIFIERS, J1939_ID_INLETPROXANDSEINFO | J1939_CHANNEL_B_INLET_ID, command_buf, 8);
 
     if (ret_value == -1) {
       PrintConsoleString("Error sending InletProxAndSeInfo CH B CAN message\r\n", 0);
-      InitCAN(NORMAL_MODE, CAN250KBAUD);
+      InitCAN_ExtendedIDs(CAN0_BASE_ADDRESS, NORMAL_MODE, CAN250KBAUD, CAN_ID_PTRN_1, CAN_MASK_PTRN_1, CAN_ID_PTRN_2, CAN_MASK_PTRN_2);
     }
   }
 #endif
@@ -545,11 +495,11 @@ void send_j1939_messages() {
   if ((loop_counter == 1) || ((loop_counter % 2) && (!mem_compare(&last_HSC1, &j1939_messages_to_send.HSC1, sizeof(HSC1_t))))) {
     //printf("HSC1\t");
     (void)write_HSC1(&command_buf[0], &j1939_messages_to_send.HSC1);
-    ret_value = send_command_CAN(J1939_ID_HSC1 | (J1939_ECU_ID << 8) | J1939_CHANNEL_A_INLET_ID, command_buf, 8);
+    ret_value = send_command_CAN(CAN0_BASE_ADDRESS, EXTENDED_IDENTIFIERS, J1939_ID_HSC1 | (J1939_ECU_ID << 8) | J1939_CHANNEL_A_INLET_ID, command_buf, 8);
 
     if (ret_value == -1) {
       PrintConsoleString("Error sending HSC1 CAN message\r\n", 0);
-      InitCAN(NORMAL_MODE, CAN250KBAUD);
+      InitCAN_ExtendedIDs(CAN0_BASE_ADDRESS, NORMAL_MODE, CAN250KBAUD, CAN_ID_PTRN_1, CAN_MASK_PTRN_1, CAN_ID_PTRN_2, CAN_MASK_PTRN_2);
     }
     last_HSC1 = j1939_messages_to_send.HSC1;
   }

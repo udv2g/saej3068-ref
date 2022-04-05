@@ -18,7 +18,7 @@ static uint8_t timeoutcounterA, timeoutcounterB;
  * timebase timer interrupt
  ********************************************************/
 
-interrupt VectorNumber_Vtimch6 void TIM_TIMER6_ISR(void) {
+interrupt VectorNumber_Vtimer6 void TIM_TIMER6_ISR(void) {
   static l_u8 timebase_counter =0;
   if (timebase_counter>=20){
     timebase_flag = TRUE;
@@ -35,7 +35,7 @@ interrupt VectorNumber_Vtimch6 void TIM_TIMER6_ISR(void) {
  * Analog sample timeout timer interrupt
  ********************************************************/
 
-interrupt VectorNumber_Vtimch1 void TIM_TIMER1_ISR(void) {
+interrupt VectorNumber_Vtimer1 void TIM_TIMER1_ISR(void) {
   uint8_t sample;
 
   if (PILOTA_WAKEUP_INTERRUPT_ENABLE == ON){      //no PWM is detected in an appropriate period
@@ -177,7 +177,7 @@ interrupt VectorNumber_Vrti void RTI_ISR(void){
 /*********LIN Service>**********/
 
   update_delay_count();       // tick scheduler
-  CPMUFLG_RTIF = 1;           // Clear RTIF
+  __RTIF = 1;                 // Clear RTIF
 }
 
 /*******************************************************
@@ -292,14 +292,14 @@ interrupt VectorNumber_Vsci2 void SCI2_ISR(void){
  * Controller Area Network Interrupt (CAN)
  ********************************************************/
 
-interrupt VectorNumber_Vcanrx void CANRX_ISR(void){
+interrupt VectorNumber_Vcan0rx void CAN0RX_ISR(void){
   //PrintConsoleString("CAN Rx\r\n", 0);
-  CAN_RXRoutine();
-  CANRFLG |= 1; // clear RXF flag
+  CAN0_RXRoutine();
+  CAN0RFLG |= 1; // clear RXF flag
 }
 
-interrupt VectorNumber_Vcanwkup void CANWKUP_ISR(void){
-  CANRFLG_WUPIF = 1;
+interrupt VectorNumber_Vcan0wkup void CAN0WKUP_ISR(void){
+  CAN0RFLG_WUPIF = 1;
 }
 
 #pragma CODE_SEG DEFAULT /* Return to default code segment */

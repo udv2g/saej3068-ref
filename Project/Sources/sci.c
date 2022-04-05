@@ -1,9 +1,9 @@
 #include "sci.h"
 #include "derivative.h"
 #include "hardware.h"
-#include "lin.h"
-#include "lin_cfg.h"
-#include "lin_hw_cfg.h"
+//#include "lin.h"
+//#include "lin_cfg.h"
+//#include "lin_hw_cfg.h"
 #include "string_utils.h"
 #include "globals.h"
 
@@ -60,15 +60,13 @@ void SCIOpenCommunication(circular_buffer *buf, uint32_t baud_rate, bool wakeup,
 
   SetSCIRIE(buf, rie);
 
-  // Check if we want to wakeup on this SCI
-  // and enable this
-  if (wakeup) {
-    // If we want to access RXEDGIE, we need to set the AMAP bit in the
-    // SCISR2 register to one. So set that first, enable the wakeup and then
-    // set back to 0 for regular operation.
-    buf->SCI->SR2 |= 0x80;
-    buf->SCI->SCIASR1 |= 0x80;
-    buf->SCI->SR2 &= 0x7F;
+  // If we want to access RXEDGIE/RXEDGIF, we need to set the AMAP bit
+  //turn AMAP on after setting baud rate and leave it on
+  buf->SCI->SR2 |= 0x80;
+  // Check if we want to wakeup on this SCI enable
+  if(wakeup){
+      //NOTE some older versions of the code incorrectly had ASR1 here!!
+      buf->SCI->SCIACR1 |= 0x80;
   }
 }
 

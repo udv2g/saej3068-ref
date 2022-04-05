@@ -303,7 +303,7 @@ uint32_t get_elapsed_time(void) {
   } else {
     millis_elapsed = _delay_counter_millis_elapsed - //This math must be protected against _delay_counter_millis_elapsed being updated in the middle.
                      last_read_delay_counter;        //Otherwise it may return a large value and trigger most or all of the delay table.
-  }                                                  //This wreaks hovoc with timeouts.
+  }                                                  //This wreaks havoc with timeouts.
   last_read_delay_counter = _delay_counter_millis_elapsed;
 
   if (!interruptsDisabled) EnableInterrupts;

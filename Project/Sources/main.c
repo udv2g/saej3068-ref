@@ -18,6 +18,8 @@
 #define FIVE_MINUTES 5 * 60 * RTI_TICKS_PER_SECOND
 //#define FIVE_MINUTES 277800
 
+bool wakeup_timer = FALSE;
+
 uint32_t ScheduleTest(void *ptr) {
   PrintConsoleString("5 mins\r\n", 0);
   return FIVE_MINUTES;
@@ -30,9 +32,17 @@ uint32_t end_Init_Timeout(void *ptr) {
   return 0;
 }
 
+uint32_t wakeup_timeout(void *ptr) {
+    wakeup_timer = FALSE;
+  return 0;
+}
+
 void main(void) {
   //uint8_t i,j;
   //uint8_t temp;
+  
+  bool last_wakeup = FALSE;
+  bool wakeup = FALSE;
 
   uint8_t rising_edge_gate = TRUE, falling_edge_gate = TRUE;
 
@@ -141,10 +151,19 @@ void main(void) {
     process_delay_table(); //execute scheduled events
 
 #ifdef CH_A_ONLY
-    VMU_WAKEUP = evse_present_p(A);
+    wakeup = evse_present_p(A);
 #else
-    VMU_WAKEUP = (evse_present_p(A) || evse_present_p(B));
+    wakeup = (evse_present_p(A) || evse_present_p(B));
 #endif
+
+    if (wakeup && !last_wakeup) {    //rising edge
+       wakeup_timer = TRUE;
+       schedule_and_reset(VMU_WAKEUP_TIME, wakeup_timeout, NULL);
+    }
+    
+    VMU_WAKEUP = (wakeup && (wakeup_timer || j1939_charge_desired));
+    
+    last_wakeup = wakeup;
 
   } /* loop forever */
   /* please make sure that you never leave main */

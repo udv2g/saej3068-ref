@@ -425,7 +425,7 @@ void DetermineEvState(uint8_t ch, DETERMINE_STATE_CODE code) {
       else if ((Pilot_Voltage[ch] == STATE_B) &&
                (_get_ev_ready_flags(ch, _EV_READY,
                                     last_ready_flags_ptr, "B2") == _EV_READY)) {
-        if (getLockStatus(ch) == locked) {
+        if (getIsLocked(ch)) {
           SetEvState(ch, EV_C2);
         } else {
           lock_if_unlocked(ch);
@@ -487,7 +487,7 @@ void DetermineEvState(uint8_t ch, DETERMINE_STATE_CODE code) {
       } else if ((Pilot_Voltage[ch] == STATE_B) &&
                  (_get_ev_ready_flags(ch, _EV_READY,
                                       last_ready_flags_ptr, "LN") == _EV_READY)) {
-        if (getLockStatus(ch) == locked) {
+        if (getIsLocked(ch)) {
           SetEvState(ch, EV_LR);
         } else {
           lock_if_unlocked(ch);
@@ -882,17 +882,6 @@ uint8_t LookupProxState(uint8_t byte_value) {
 
 #else
 
-#if (PROX_STATES == PROX_J1772) //Normal prox
-  if ((byte_value >= PROX_STATE_CONNECTED_ON_MIN) && (byte_value <= PROX_STATE_CONNECTED_ON_MAX))
-    return CONNECTED_ON;
-  else if ((byte_value >= PROX_STATE_CONNECTED_OFF_MIN) && (byte_value <= PROX_STATE_CONNECTED_OFF_MAX))
-    return CONNECTED_OFF;
-  //else if ((byte_value >= PROX_STATE_DISCONNECTED_MIN) && (byte_value <= PROX_STATE_DISCONNECTED_MAX))
-  else if (byte_value >= PROX_STATE_DISCONNECTED_MIN)
-    return DISCONNECTED;
-  else
-    return ERROR;
-#else                           //European prox or J3068
   if ((byte_value >= IEC_PROX_ERROR_HIGH_MIN)) // no IEC_PROX_ERROR_HIGH_MAX because ff is already the ceiling
     return IEC_ERROR_HIGH;
   else if ((byte_value >= IEC_PROX_DISCONNECTED_MIN) && (byte_value <= IEC_PROX_DISCONNECTED_MAX))
@@ -907,7 +896,7 @@ uint8_t LookupProxState(uint8_t byte_value) {
     return IEC_J1772_PRESSED;
   else if ((byte_value >= IEC_PROX_32A_MIN) && (byte_value <= IEC_PROX_32A_MAX))
     return IEC_32A;
-  else if ((byte_value >= IEC_PROX_RESERVED_BUTTON_UP_MIN) && (byte_value <= IEC_PROX_RESERVED_BUTTON_UP_MIN))
+  else if ((byte_value >= IEC_PROX_RESERVED_BUTTON_UP_MIN) && (byte_value <= IEC_PROX_RESERVED_BUTTON_UP_MAX))
     return IEC_J1772_RELEASED;
   else if ((byte_value >= IEC_PROX_63A_MIN) && (byte_value <= IEC_PROX_63A_MAX))
     return IEC_63A;
@@ -915,7 +904,6 @@ uint8_t LookupProxState(uint8_t byte_value) {
     return IEC_RESERVED_LOW;
   else if (byte_value <= IEC_PROX_ERROR_LOW_MAX) // no IEC_PROX_ERROR_LOW_MIN because 00 is already the floor
     return IEC_ERROR_LOW;
-#endif
 
 #endif
 
@@ -994,7 +982,7 @@ three_phase_currents_t DetermineEvMaxC(uint8_t ch, three_phase_currents_t evse_m
   uint8_t cordset_max_c = 255;
 
 #ifdef EV_CONFIG //only check cordset as an EV
-#if (PROX_STATES == PROX_IEC61851) {
+#ifndef TYPE_I_COUPLER 
   switch (IEC_Prox_Voltage[ch]) {
     case IEC_13A:
       cordset_max_c = 13;
@@ -1205,9 +1193,9 @@ void EVSELearnProx(void) {
 }
 
 uint8_t prox_safe_to_energize_filter_func(uint8_t prox_state) {
-#if defined SE_CONFIG || (PROX_STATES == PROX_J1772)
-  return ((PROX_VOLTAGE)prox_state == CONNECTED_ON);
-#elif (PROX_STATES == PROX_IEC61851)
+#ifdef TYPE_I_COUPLER
+  return ((IEC_PROX_VOLTAGE)prox_state == IEC_J1772_RELEASED);
+#else
   return (((IEC_PROX_VOLTAGE)prox_state == IEC_13A) ||
           ((IEC_PROX_VOLTAGE)prox_state == IEC_20A) ||
           ((IEC_PROX_VOLTAGE)prox_state == IEC_32A) ||
@@ -1286,11 +1274,7 @@ uint32_t ProcessFilters() {
     //Prox Voltage
     proxA_voltage = filter_check_majority(&prox_voltage_filter[A]);
     if (proxA_voltage != -1) {
-#if PROX_STATES == PROX_J1772)
-      Prox_Voltage[A] = (PROX_VOLTAGE)proxA_voltage;
-#else
       IEC_Prox_Voltage[A] = (IEC_PROX_VOLTAGE)proxA_voltage;
-#endif
     }
 
     //Prox Safe to energize
@@ -1310,11 +1294,7 @@ uint32_t ProcessFilters() {
     //Prox Voltage
     proxB_voltage = filter_check_majority(&prox_voltage_filter[B]);
     if (proxB_voltage != -1) {
-#if PROX_STATES == PROX_J1772)
-      Prox_Voltage[B] = (PROX_VOLTAGE)proxB_voltage;
-#else
       IEC_Prox_Voltage[B] = (IEC_PROX_VOLTAGE)proxB_voltage;
-#endif
     }
 
     //Prox Safe to energize

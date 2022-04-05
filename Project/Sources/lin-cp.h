@@ -32,6 +32,13 @@ void PrintLinCPStatus(uint8_t ch);
 #define LFC(it,v) if (it) {LF(clr,LI1,v);} else {LF(clr,LI0,v);}
 #define LSS(it,sch,a) if (it) {LS(LI1,sch,a);} else {LS(LI0,sch,a);}
 
+//If single phase, use the "t" value, else use the "f" value.  "t" value should be 0 or the type-appropriate Not Available value as needed.
+#if defined(TYPE_I_COUPLER) || defined(SINGLE_PHASE)
+  #define SP(f,t) (t)
+#else 
+  #define SP(f,t) (f)
+#endif
+
 
 #define  RTI_TICKS_PER_LINCP_LOOP  20             //  How often the LIN-CP state machine is serviced
 

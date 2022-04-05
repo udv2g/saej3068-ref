@@ -3,12 +3,18 @@
 
 //#define CH_A_ONLY
 //Behavior is undefined if neither LIN nor PWM are enabled
-#define PWM_CHARGE_ENABLE
+//#define PWM_CHARGE_ENABLE
 #define LIN_CHARGE_ENABLE
 
-#define J1939_REQD_FOR_CHARGE
-#define J1939_XMIT
-#define J1939_SEND_SEINFO
+//#define J1939_REQD_FOR_CHARGE
+//#define J1939_XMIT
+//#define J1939_SEND_SEINFO
+
+#define INLET_LOCK_TYPE NONE
+//#define INLET_LOCK_TYPE FOUR_WIRE
+
+//#define SINGLE_PHASE
+//#define TYPE_I_COUPLER              //As of now, this does the same thing as SINGLE_PHASE + uses Type I prox levels
 
 //#define PRE_RELEASE_HARDWARE
 
@@ -21,13 +27,14 @@
 
 #define UART_BAUD            115200
 
-#define INITIALIZATION_DELAY 10000
+#define INITIALIZATION_DELAY 10
 #define RTI_TICKS_PER_SECOND 926ul  //1000/1.08ms  This still runs long for some reason  FIXME?
 #define LOCK_CHECK_DELAY     250
 
 //EV
 #define CONNECTION_CLEAR_TIME 2*60*RTI_TICKS_PER_SECOND   //Time between connections to assume a new connection is not a restart
 #define RAMPDOWN_TIME         2*RTI_TICKS_PER_SECOND      //Time to wait for inverter to stop drawing current before requesting disconnect in non-emergency situation
+#define VMU_WAKEUP_TIME       60*RTI_TICKS_PER_SECOND     //Time to wait for ECU to wake up and request charge before deasserting wakeup signal
 
 /*<Ratings*/
 //Voltages are *10, Currents are *1
@@ -50,13 +57,13 @@
 
 //EV settings
 #define EV_FREQUENCIES FiftyOrSixtyHz
-#define EV_MAX_VOLTAGE_LL 480*11    //+10%
-#define EV_MAX_VOLTAGE_LN 277*11
-#define EV_MIN_VOLTAGE_LL 208*9     //-10%
-#define EV_MIN_VOLTAGE_LN 120*9
+#define EV_MAX_VOLTAGE_LL 4800
+#define EV_MAX_VOLTAGE_LN 2770
+#define EV_MIN_VOLTAGE_LL 2080
+#define EV_MIN_VOLTAGE_LN 1200
 #define EV_MAX_CURRENT_L 32
 #define EV_MAX_CURRENT_N 32
-#define EV_MIN_CURRENT_L 6 
+#define EV_MIN_CURRENT_L 0 
 /*Rating>*/
 
 /*<J1939*/

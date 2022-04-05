@@ -49,7 +49,11 @@ typedef enum {
 #define SCI_VERSION SCI_V5
 
 /* Type of MCU */
+#ifdef S12X
+#define _MCU_  _S12X_
+#else 
 #define _MCU_  _S12_
+#endif
 
 /* Resynchronization support */
 #define __RESYN_EN   0
@@ -65,12 +69,25 @@ typedef enum {
 #define _LIN_SLIC_    0
 #define _LIN_GPIO_    0
 /***********  SCI HARDWARE SECTION  *********/
+#ifdef S12X
+#define NUM_OF_SCI_CHANNEL    6
+#else 
 #define NUM_OF_SCI_CHANNEL    3
+#endif
 
 /* SCI Base Register definition */
+#ifdef S12X
+#define SCI0_ADDR  0x00C8
+#define SCI1_ADDR  0x00D0
+#define SCI2_ADDR  0x00B8
+#define SCI3_ADDR  0x00C0
+#define SCI4_ADDR  0x0130
+#define SCI5_ADDR  0x0138
+#else 
 #define SCI0_ADDR  0x00C8
 #define SCI1_ADDR  0x00D0
 #define SCI2_ADDR  0x00E8
+#endif
 
 /* Use SCI Channel  */
 #define _SCI0_   1

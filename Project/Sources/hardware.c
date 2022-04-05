@@ -2,8 +2,8 @@
 #include "derivative.h"
 #include "hardware.h"
 #include "types.h"
-#include "lin_hw_cfg.h"
-#include "sci.h"
+//#include "lin_hw_cfg.h"
+//#include "sci.h"
 #include "timers.h"
 #include "globals.h"
 #include "j1939.h"
@@ -25,16 +25,20 @@ void init_hardware(void)  {
  * Oscillator
  ********************************************************/
 
+//SYNDIV=0b11 and VCOFRQ = 0b11 for 48MHz for S12X ONLY
+
 void configure_oscillator(void) {
-  //configure oscillator for 24 MHz Fbus (pg. 387)
-  CPMUOSC_OSCE = 1;           //enable external oscillator
-  CPMUREFDIV_REFDIV = 0x00;   //pre divider ratio at 1 (reference frequency = oscillator frequency)
-  CPMUREFDIV_REFFRQ = 0b10;   //reference frequency between 6 and 12 MHz [inc] (12)
-  CPMUSYNR_SYNDIV = 0x01;     //Fvco = 2 * {reference frequency (12 MHz)} * {SYNDIV (1) + 1} = 48 MHz
-  CPMUSYNR_VCOFRQ = 0b00;     //Fvco between 32 [inc] and 48 MHz [inc]
-  CPMUPOSTDIV = 0b00;         //Fbus = Fvco / {POSTDIV (0) + 1} / 2 = 24 MHz
-  CPMUCLKS_PLLSEL = 1;        //enable PLL
-  while(!CPMUFLG_UPOSC);      //wait for the oscillator to be stable, does not always work? needs investigation
+  //configure oscillator for 24 MHz Fbus (pg. 387 (s12x pg. 486))
+  PLL_Disable();              //disable PLL before changing settings
+  Osc_Enable();               //enable external oscillator
+  __REFDIV = 0x00;            //pre divider ratio at 1 (reference frequency = oscillator frequency)
+  __REFFRQ = 0b10;            //reference frequency between 6 and 12 MHz [inc] (12)
+  __SYNDIV = 0x01;            //Fvco = 2 * {reference frequency (12 MHz)} * {SYNDIV (1) + 1} = 48 MHz
+  __VCOFRQ = 0b00;            //Fvco between 32 [inc] and 48 MHz [inc]
+  __POSTDIV = 0b00;           //Fbus = Fvco / {POSTDIV (0) + 1} / 2 = 24 MHz
+  PLL_Enable();               //enable PLL
+  __PLLSEL = 1;               //select PLL
+   OSC_Stabilize();           //wait for the oscillator to be stable, does not always work? needs investigation
 }
 
 /*******************************************************
@@ -83,24 +87,44 @@ void init_io(void)  {
   PWM_B = 1;
 
   //block 4
+#ifndef S12X  
   PERJ = 0;                   //disable pull resistors on port J
   DDRJ_DDRJ0 = OUTPUT;        //LIN_A_Enable (LI0)
   DDRJ_DDRJ1 = OUTPUT;        //LIN_B_Enable (LI1)
   DDRJ_DDRJ2 = OUTPUT;        //VMU_Wakeup
   DDRJ_DDRJ3 = OUTPUT;        //Sleep Shdn
-#if (defined (EV_CONFIG) && defined(PRE_RELEASE_HARDWARE))
+#ifdef EV_CONFIG
   DDRJ_DDRJ4 = INPUT;         //uC_Sense_Signal_A_Lock
   DDRJ_DDRJ5 = INPUT;         //uC_Sense_Signal_A_Unlock
   DDRJ_DDRJ6 = INPUT;         //uC_Sense_Signal_B_Lock
   DDRJ_DDRJ7 = INPUT;         //uC_Sense_Signal_B_Unlock
 #else
-  DDRJ_DDRJ4 = OUTPUT;        //contactor control ch B
+  DDRJ_DDRJ4 = OUTPUT;        //pre-release contactor control ch B
   DDRJ_DDRJ5 = OUTPUT;
   DDRJ_DDRJ6 = OUTPUT;
-  DDRJ_DDRJ7 = OUTPUT;        //contactor control ch A
+  DDRJ_DDRJ7 = OUTPUT;        //pre-release contactor control ch A
   
   PTJ = 0;                    //drive all contactor controls low
-#endif
+#endif //EV_CONFIG
+#else  //S12X
+  DDRA_DDRA0 = OUTPUT;        //LIN_A_Enable (LI0)
+  DDRA_DDRA1 = OUTPUT;        //LIN_B_Enable (LI1)
+  DDRA_DDRA2 = OUTPUT;        //VMU_Wakeup
+  DDRA_DDRA3 = OUTPUT;        //Sleep Shdn
+#ifdef EV_CONFIG
+  DDRA_DDRA4 = INPUT;         //uC_Sense_Signal_A_Lock
+  DDRA_DDRA5 = INPUT;         //uC_Sense_Signal_A_Unlock
+  DDRA_DDRA6 = INPUT;         //uC_Sense_Signal_B_Lock
+  DDRA_DDRA7 = INPUT;         //uC_Sense_Signal_B_Unlock
+#else
+  DDRA_DDRA4 = OUTPUT;        //pre-release contactor control ch B
+  DDRA_DDRA5 = OUTPUT;
+  DDRA_DDRA6 = OUTPUT;
+  DDRA_DDRA7 = OUTPUT;        //pre-release contactor control ch A
+  
+  PORTA = 0;                  //drive all contactor controls low
+#endif //EV_CONFIG
+#endif //S12X
 
   VMU_WAKEUP = 0;
   SLEEP_SHDN = 0;             //Enable devices shut down in sleep
@@ -131,6 +155,8 @@ void init_io(void)  {
   AD14 => XX0AD6
   AD15 => XX0AD7
   */
+  
+#ifndef S12X
   DDR0AD_DDR0AD7 = OUTPUT;    //Relay_Control_B_Plus
   DDR0AD_DDR0AD6 = OUTPUT;    //Relay_Control_B_Minus
   DDR0AD_DDR0AD5 = OUTPUT;    //Relay_Control_A_Plus
@@ -142,9 +168,6 @@ void init_io(void)  {
   ATDDIEN_IEN1 = 0;           //V_pilot_B (disable digital input)
   ATDDIEN_IEN0 = 0;           //V_pilot_A (disable digital input)
   
-  PWM_ENABLE_A = 0;           //Enable PWM switch A
-  PWM_ENABLE_B = 0;           //Enable PWM switch B
-
   //drive unused pins low
   DDR1AD_DDR1AD7 = OUTPUT; PT1AD_PT1AD7 = 0;
   DDR1AD_DDR1AD6 = OUTPUT; PT1AD_PT1AD6 = 0;
@@ -152,6 +175,24 @@ void init_io(void)  {
   DDR1AD_DDR1AD4 = OUTPUT; PT1AD_PT1AD4 = 0;
   DDR0AD_DDR0AD3 = OUTPUT; PT0AD_PT0AD3 = 0;
   DDR0AD_DDR0AD0 = OUTPUT; PT0AD_PT0AD0 = 0;
+#else
+  ATD0DIEN_IEN3 = 0;          //V_prox_B (disable digital input)
+  ATD0DIEN_IEN2 = 0;          //V_prox_A (disable digital input)
+  ATD0DIEN_IEN1 = 0;          //V_pilot_B (disable digital input)
+  ATD0DIEN_IEN0 = 0;          //V_pilot_A (disable digital input)
+  
+  DDRB_DDRB7 = OUTPUT;        //Relay_Control_B_Plus
+  DDRB_DDRB6 = OUTPUT;        //Relay_Control_B_Minus
+  DDRB_DDRB5 = OUTPUT;        //Relay_Control_A_Plus
+  DDRB_DDRB3 = OUTPUT;        //Relay_Control_A_Minus
+  DDRB_DDRB4 = OUTPUT;        //CAN4_SLEEP
+  DDRB_DDRB2 = OUTPUT;        //PWM_Enable_B
+  DDRB_DDRB1 = OUTPUT;        //PWM_Enable_A
+  DDRB_DDRB0 = OUTPUT;        //CAN1_SLEEP 
+#endif  
+  
+  PWM_ENABLE_A = 0;           //Enable PWM switch A
+  PWM_ENABLE_B = 0;           //Enable PWM switch B
 
 }
 
@@ -160,16 +201,16 @@ void init_io(void)  {
  ********************************************************/
 
 void init_pwm(void) {
-  PWMPRCLK_PCKA = 0b011;      //PWM clock A 1/8 Fbus (3.0 MHz)
+  PWMPRCLK_PCKA = 0b011;      //PWM clock A 1/8 Fbus (3.0 MHz)          Use 0b100 (1/16) for 48MHz clock
   PWMSCLA = 15;               //3.0 MHz / (2 * 15) = 100 kHz
   PWMCAE_CAE4 = 0;            //set PWM4 to left aligned
-  PWMCLKAB_PCLKAB4 = 0;       //choose clock A for PWM4 (note: this setting is different for channels 2,3,6,7)
+  //PWMCLKAB_PCLKAB4 = 0;       //choose clock A for PWM4 (note: this setting is different for channels 2,3,6,7)        This is the default behavior and not supported on the S12X
   PWMCLK_PCLK4 = 1;           //scale the clock further by PWMSCLA (*2) (clock SA)
   PWMPER4 = 100;              //set period 100 kHz / 100 = 1 kHz
   PWMDTY4 = 50;               //set duty cycle to 50 / 100 = 50%
   PWMPOL_PPOL4 = 1;           //pin high for first part of duty cycle
   PWMCAE_CAE5 = 0;            //set PWM5 to left aligned
-  PWMCLKAB_PCLKAB5 = 0;       //choose clock A for PWM5 (note: this setting is different for channels 2,3,6,7)
+  ///PWMCLKAB_PCLKAB5 = 0;       //choose clock A for PWM5 (note: this setting is different for channels 2,3,6,7)       This is the default behavior and not supported on the S12X
   PWMCLK_PCLK5 = 1;           //scale the clock further by PWMSCLA (*2) (clock SA)
   PWMPER5 = 100;              //set period 100 kHz / 100 = 1 kHz
   PWMDTY5 = 50;               //set duty cycle to 50 / 100 = 50%
@@ -179,7 +220,7 @@ void init_pwm(void) {
 /*******************************************************
  * Analog to Digital Converter (ADC)
  ********************************************************/
-
+ 
 void InitADC(void){
     // Configures the ATD peripheral
     ATDCTL1_SRES = 0b00;      // 8-bit resolution
@@ -218,7 +259,6 @@ uint8_t ProxBReadADC(void){
   return ATDDR0H;
 }
 
-
 /*******************************************************
  * Timers
  ********************************************************/
@@ -253,13 +293,13 @@ void init_timers(void)  {
 
 void InitRTI(void){
   //pgs. 369-371
-  CPMUCLKS_RTIOSCSEL = 1;   //use OSCCLK for RTI source
+  rti_sel_oscclk();           //use OSCCLK for RTI source
   //period = 12MHz (OSCCLK) / 12e3 => 1ms
-  //CPMURTI = 0x8B;  // This is for 1ms
+  //rti_sel_oscclk() = 0x8B;  // This is for 1ms
   //period = 12MHz (OSCCLK) / 13e3 => 923 Hz / 1.08ms
-  CPMURTI = 0x8C;
+  __RTI_CTRL_REG = 0x8C;
   // Enable RTI Interrupt
-  CPMUINT_RTIE = 1;
+  __RTIE = 1;
 }
 
 /*******************************************************

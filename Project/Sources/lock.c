@@ -5,6 +5,7 @@
 #include "types.h"
 #include "sci.h"
 #include "globals.h"
+#include "config.h"
 
 // 0 for locked and 1 for undefined
 
@@ -27,6 +28,15 @@ bool getIsLocked(uint8_t ch) {
   return (lockStatus[ch] == locked) || (lockStatus[ch] == presumedLocked);
 }
 
+#if INLET_LOCK_TYPE == NONE
+
+#pragma INLINE 
+lock_status_t getAndVerifyLockStatus(uint8_t ch) {
+  return lockStatus[ch];
+}
+#endif
+
+#if INLET_LOCK_TYPE == FOUR_WIRE
 lock_status_t getAndVerifyLockStatus(uint8_t ch) {
   switch(lockStatus[ch])  {
     case locking:
@@ -59,6 +69,7 @@ lock_status_t getAndVerifyLockStatus(uint8_t ch) {
   }
   return lockStatus[ch];
 }
+#endif
 
 uint32_t verifyLockAStatus(void *a)  {
   (void)getAndVerifyLockStatus(A);
@@ -244,6 +255,18 @@ uint32_t retryUnlockB(void *a) {
 ////////////////////////////////////////////////////
 // Main lock and unlock functions
 ////////////////////////////////////////////////////
+
+#if INLET_LOCK_TYPE == NONE
+void lock(uint8_t ch) {
+  lockStatus[ch] = locked;
+}
+
+void unlock(uint8_t ch) {
+  lockStatus[ch] = unlocked;
+}
+#endif
+
+#if INLET_LOCK_TYPE == FOUR_WIRE 
 void lock(uint8_t ch) {
   PrintConsoleString("Lock ", 0);
   if (ch) {
@@ -259,11 +282,6 @@ void lock(uint8_t ch) {
   startDrivingLock(ch);
   schedule_if_unscheduled(DRIVE_TIME, endDriving(ch), NULL);
   schedule_if_unscheduled(DRIVE_TIME, setPresumedLocked(ch), NULL);
-}
-
-void lock_if_unlocked(uint8_t ch) {
-  // only lock if state is unlocked or presumedUnlocked AND pin indicates not locked
-  if ((getAndVerifyLockStatus(ch) == unlocked) || (getAndVerifyLockStatus(ch) == presumedUnlocked)) lock(ch);
 }
 
 void unlock(uint8_t ch) {
@@ -282,8 +300,14 @@ void unlock(uint8_t ch) {
   schedule_if_unscheduled(DRIVE_TIME, endDriving(ch), NULL);
   schedule_if_unscheduled(DRIVE_TIME, setPresumedUnlocked(ch), NULL);
 }
+#endif
+
+void lock_if_unlocked(uint8_t ch) {
+  // only lock if state is unlocked or presumedUnlocked
+  if ((getAndVerifyLockStatus(ch) == unlocked) || (getAndVerifyLockStatus(ch) == presumedUnlocked)) lock(ch);
+}
 
 void unlock_if_locked(uint8_t ch) {
-  // only unlock if state is locked or presumedLocked AND pin indicates locked
+  // only unlock if state is locked or presumedLocked
   if ((getAndVerifyLockStatus(ch) == locked) || (getAndVerifyLockStatus(ch) == presumedLocked)) unlock(ch);
 }

@@ -163,19 +163,23 @@ void InitializeLINvariables(uint8_t ch) {
   LW(ch, l_u8, EvSelectedVersion, NotAvail_8bit);
   LW(ch, l_u16, EvMaxVoltageL1N, EvMaxVoltsLN[ch]);
   LW(ch, l_u16, EvMinVoltageL1N, EvMinVoltsLN[ch]);
-  LW(ch, l_u16, EvMaxVoltageLL, EvMaxVoltsLL[ch]);
-  LW(ch, l_u16, EvMinVoltageLL, EvMinVoltsLL[ch]);
+  LW(ch, l_u16, EvMaxVoltageLL, SP(EvMaxVoltsLL[ch],NotAvail_16bit));
+  LW(ch, l_u16, EvMinVoltageLL, SP(EvMinVoltsLL[ch],NotAvail_16bit));
   LW(ch, l_u8, EvMaxCurrentL1, EvMaxAmpsL1[ch]);
   LW(ch, l_u8, EvMinCurrentL1, EvMinAmpsL1[ch]);
-  LW(ch, l_u8, EvMaxCurrentL2, EvMaxAmpsL2[ch]);
-  LW(ch, l_u8, EvMinCurrentL2, EvMinAmpsL2[ch]);
-  LW(ch, l_u8, EvMaxCurrentL3, EvMaxAmpsL3[ch]);
-  LW(ch, l_u8, EvMinCurrentL3, EvMinAmpsL3[ch]);
+  LW(ch, l_u8, EvMaxCurrentL2, SP(EvMaxAmpsL2[ch],NotAvail_8bit));
+  LW(ch, l_u8, EvMinCurrentL2, SP(EvMinAmpsL2[ch],NotAvail_8bit));
+  LW(ch, l_u8, EvMaxCurrentL3, SP(EvMaxAmpsL3[ch],NotAvail_8bit));
+  LW(ch, l_u8, EvMinCurrentL3, SP(EvMinAmpsL3[ch],NotAvail_8bit));
   LW(ch, l_u8, EvMaxCurrentN, EvMaxAmpsN[ch]);
   LW(ch, l_u8, EvFrequencies, EvFrequencies[ch]);
   LW(ch, l_u8, EvStatusVer, EvStatusVer[ch]);
   LW(ch, l_u8, EvStatusInit, EvStatusInit[ch]);
   LW(ch, l_u8, EvStatusOp, EvStatusOp[ch]);
+  LW(ch, l_u8, EvRequestedCurrentL1, NotAvail_8bit);
+  LW(ch, l_u8, EvRequestedCurrentL2, SP(NotAvail_8bit,0));
+  LW(ch, l_u8, EvRequestedCurrentL3, SP(NotAvail_8bit,0));
+  LW(ch, l_u8, EvRequestedCurrentN, NotAvail_8bit);
 #pragma MESSAGE DISABLE C4002 //result not used -- ternary operator should not be used for assignements
   l_bool_wr_LI0_EvAwake(1);
   
@@ -450,7 +454,7 @@ void InitializeLINvariables(uint8_t ch) {
   //do we need those
   //SeAvailableAmpsL1 = 16; SeAvailableAmpsL2 = 16; SeAvailableAmpsL3 = 16; SeAvailableAmpsN = 12;
   SeFrequency[ch] = SE_FREQUENCY;
-  SeMaxAmpsL1[ch] = SE_MAX_CURRENT_L; SeMaxAmpsL2[ch] = SE_MAX_CURRENT_L; SeMaxAmpsL3[ch] = SE_MAX_CURRENT_L; SeMaxAmpsN[ch] = SE_MAX_CURRENT_N;
+  SeMaxAmpsL1[ch] = SE_MAX_CURRENT_L; SeMaxAmpsL2[ch] = SP(SE_MAX_CURRENT_L,0); SeMaxAmpsL3[ch] = SP(SE_MAX_CURRENT_L,0); SeMaxAmpsN[ch] = SE_MAX_CURRENT_N;
   EvSelectedVer[ch] = NotAvail_8bit;
   // clang-format on
   //SeNomVoltsLN = 0x0AD2; SeNomVoltsLL = 4800; // 277 VAC Line to Neutral, 480 VAC line to line
@@ -527,10 +531,10 @@ void StartScheduleInit(uint8_t ch) {
   LW(ch, l_u8, SeMaxCurrentN, SeMaxAmpsN[ch]);
 
   LW(ch, l_u16, SeNomVoltageL1N, SeNomVoltsLN[ch]);
-  LW(ch, l_u16, SeNomVoltageLL, SeNomVoltsLL[ch]);
+  LW(ch, l_u16, SeNomVoltageLL, SP(SeNomVoltsLL[ch],NotAvail_16bit));
   LW(ch, l_u8, SeAvailableCurrentL1, evse_state[ch].set_c.C1_L1);
-  LW(ch, l_u8, SeAvailableCurrentL2, evse_state[ch].set_c.C2_L2);
-  LW(ch, l_u8, SeAvailableCurrentL3, evse_state[ch].set_c.C3_L3);
+  LW(ch, l_u8, SeAvailableCurrentL2, SP(evse_state[ch].set_c.C2_L2, NotAvail_8bit));
+  LW(ch, l_u8, SeAvailableCurrentL3, SP(evse_state[ch].set_c.C3_L3, NotAvail_8bit));
   LW(ch, l_u8, SeAvailableCurrentN, evse_state[ch].set_c.C4_N);
   EvMinVoltsFrame[ch] = NotReceived, EvCurrentsFrame[ch] = NotReceived, EvStatusFrame[ch] = NotReceived;
   EvMaxVoltsFrame[ch] = NotReceived;
@@ -754,7 +758,9 @@ void DetermineLINCPState(uint8_t ch, SCHEDULE_PICKER_EVENTS SchedulePickerMessag
       }
       if (LFT(ch, EvMaxMinCurrents)) {
         ReadEvCurrentRatings(ch);
-        if ((EvMinAmpsL1[ch] > SeMaxAmpsL1[ch]) || (EvMinAmpsL2[ch] > SeMaxAmpsL2[ch]) || (EvMinAmpsL3[ch] > SeMaxAmpsL3[ch])) // Current too low
+        if (((EvMinAmpsL1[ch] != NotAvail_8bit) && (EvMinAmpsL1[ch] > SeMaxAmpsL1[ch])) || 
+            ((EvMinAmpsL2[ch] != NotAvail_8bit) && (EvMinAmpsL2[ch] > SeMaxAmpsL2[ch])) || 
+            ((EvMinAmpsL3[ch] != NotAvail_8bit) && (EvMinAmpsL3[ch] > SeMaxAmpsL3[ch]))) // Current too low
         {
           EvCurrentsFrame[ch] = Incompatible;
           (void)set_priority_info_code(ch, SEINFOENTRY_AVAILABLE_CURRENT_TOO_LOW); // Info code meaning Minimum available current is too low
@@ -818,16 +824,16 @@ void DetermineLINCPState(uint8_t ch, SCHEDULE_PICKER_EVENTS SchedulePickerMessag
             LINPermitVoltage[ch] = (LR(ch, l_u8, EvStatusOp_EvStatus) == Permit_V); // = 1 when contactor closure is allowed
           }
           LW(ch, l_u8, SeAvailableCurrentL1, evse_state[ch].set_c.C1_L1);
-          LW(ch, l_u8, SeAvailableCurrentL2, evse_state[ch].set_c.C2_L2);
-          LW(ch, l_u8, SeAvailableCurrentL3, evse_state[ch].set_c.C3_L3);
+          LW(ch, l_u8, SeAvailableCurrentL2, SP(evse_state[ch].set_c.C2_L2, NotAvail_8bit));
+          LW(ch, l_u8, SeAvailableCurrentL3, SP(evse_state[ch].set_c.C3_L3, NotAvail_8bit));
           LW(ch, l_u8, SeAvailableCurrentN, evse_state[ch].set_c.C4_N);
         }
       } else {
-        if (++MissingStatusCount[ch] == T_NOLIN)
+        if (++MissingStatusCount[ch] == L_NOLIN)
         {
           LW(ch, l_u8, SeAvailableCurrentL1, 0);
-          LW(ch, l_u8, SeAvailableCurrentL2, 0);
-          LW(ch, l_u8, SeAvailableCurrentL3, 0);
+          LW(ch, l_u8, SeAvailableCurrentL2, SP(0, NotAvail_8bit));
+          LW(ch, l_u8, SeAvailableCurrentL3, SP(0, NotAvail_8bit));
           LW(ch, l_u8, SeAvailableCurrentN, 0);
           
           (void)set_priority_info_code(ch, SEINFOENTRY_NO_LIN);

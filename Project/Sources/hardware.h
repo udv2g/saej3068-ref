@@ -33,7 +33,13 @@ void InitRTI(void);
 #define PROX_IEC61851        2
 // END prox_type_t
 
-#define PROX_STATES   PROX_IEC61851
+/* ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ * 
+ * The defined set of Lock Types
+ * ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ */
+// DOMAIN : lock_type_t
+#define NONE                 1
+#define FOUR_WIRE            2
+// END lock_type_t
 
 /*******************************************************
  * Delay Functions
@@ -102,6 +108,7 @@ uint8_t ProxBReadADC(void);
 #define PILOT_DET_A           PTP_PTP2
 
 //block 4
+#ifndef S12X
 #define LIN_A_ENABLE          PTJ_PTJ0
 #define LIN_B_ENABLE          PTJ_PTJ1
 #define VMU_WAKEUP            PTJ_PTJ2
@@ -110,6 +117,16 @@ uint8_t ProxBReadADC(void);
 #define UC_SENSE_SIGNAL_A_UNLOCK  PTJ_PTJ5
 #define UC_SENSE_SIGNAL_B_LOCK    PTJ_PTJ6
 #define UC_SENSE_SIGNAL_B_UNLOCK  PTJ_PTJ7
+#else
+#define LIN_A_ENABLE          PORTA_PA0
+#define LIN_B_ENABLE          PORTA_PA1
+#define VMU_WAKEUP            PORTA_PA2
+#define SLEEP_SHDN            PORTA_PA3
+#define UC_SENSE_SIGNAL_A_LOCK    PORTA_PA4
+#define UC_SENSE_SIGNAL_A_UNLOCK  PORTA_PA5
+#define UC_SENSE_SIGNAL_B_LOCK    PORTA_PA6
+#define UC_SENSE_SIGNAL_B_UNLOCK  PORTA_PA7
+#endif
 
 #ifdef PRE_RELEASE_HARDWARE
 #define CONTACTOR_B_CLOSE     PTJ_PTJ4
@@ -119,12 +136,24 @@ uint8_t ProxBReadADC(void);
 #endif
 
 //block 7
+
+#ifndef S12X
 #define RELAY_CONTROL_B_PLUS  PT0AD_PT0AD7
 #define RELAY_CONTROL_B_MINUS PT0AD_PT0AD6
 #define RELAY_CONTROL_A_PLUS  PT0AD_PT0AD5
 #define RELAY_CONTROL_A_MINUS PT0AD_PT0AD4
 #define PWM_ENABLE_B          PT0AD_PT0AD2
 #define PWM_ENABLE_A          PT0AD_PT0AD1
+#else
+#define RELAY_CONTROL_B_PLUS  PORTB_PB7
+#define RELAY_CONTROL_B_MINUS PORTB_PB6
+#define RELAY_CONTROL_A_PLUS  PORTB_PB5
+#define RELAY_CONTROL_A_MINUS PORTB_PB4
+#define CAN4_SLEEP            PORTB_PB3
+#define PWM_ENABLE_B          PORTB_PB2
+#define PWM_ENABLE_A          PORTB_PB1
+#define CAN1_SLEEP            PORTB_PB0
+#endif
 
 #define SET_PWM_PIN(x,y) if(x) { PWM_B = (y); } else { PWM_A = (y); }
 
@@ -142,6 +171,19 @@ uint8_t ProxBReadADC(void);
 #define EnablePWM(x) if(x) { EnablePWMB(); } else { EnablePWMA(); }
 #define DisablePWM(x) if(x) { DisablePWMB(); } else { DisablePWMA(); }
 #define SetPilotDutyCycleRaw(x,y) if(x) { SetPilotBDutyCycleRaw(y); } else { SetPilotADutyCycleRaw(y); }
+
+/*******************************************************
+ * Controller Area Network Interrupt (CAN)
+ ********************************************************/
+ 
+#ifdef S12X
+#define CAN0_BASE_ADDRESS &CAN0CTL0
+#define CAN1_BASE_ADDRESS &CAN1CTL0
+#define CAN4_BASE_ADDRESS &CAN4CTL0
+
+#else
+#define CAN0_BASE_ADDRESS &CANCTL0
+#endif
 
 /*******************************************************
  * (EV) States

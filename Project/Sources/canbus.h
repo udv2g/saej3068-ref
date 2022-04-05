@@ -9,8 +9,20 @@
  *  Controller Area Network Interrupt (CAN)
  ********************************************************/
 
+void InitCAN_ExtendedIDs (uint8_t * const base_address, uint8_t mode, uint8_t speed, uint32_t id_ptrn_1, uint32_t mask_ptrn_1, uint32_t id_ptrn_2, uint32_t mask_ptrn_2);
+void InitCAN_StandardIDs (uint8_t * const base_address, uint8_t mode, uint8_t speed, uint16_t id_ptrn_1, uint16_t mask_ptrn_1, uint16_t id_ptrn_2, uint16_t mask_ptrn_2, uint16_t id_ptrn_3, uint16_t mask_ptrn_3, uint16_t id_ptrn_4, uint16_t mask_ptrn_4);
 
-void InitCAN(uint8_t, uint8_t);
+int8_t send_command_CAN(uint8_t * const base_address, uint8_t identifiers, uint32_t id, uint8_t *data, uint8_t msg_size);
+
+typedef struct {
+    uint32_t id;
+    void *obj;
+    int (*parser) (void *obj, uint8_t *buf, int offset, int buf_size);
+    int (*handler) (void *obj);
+    uint8_t process_message_p;
+} can_msg_dispatcher_t;
+
+uint32_t parse_message_CAN(uint8_t * const base_address, uint8_t identifiers, uint8_t table_size, can_msg_dispatcher_t* table);
 
 #define LISTEN_ONLY_MODE 1
 #define NORMAL_MODE 0
@@ -18,37 +30,11 @@ void InitCAN(uint8_t, uint8_t);
 #define STANDARD_IDENTIFIERS 0
 #define EXTENDED_IDENTIFIERS 1
 
-
 #define CAN250KBAUD 0
 #define CAN500KBAUD 1
 #define CAN1MBAUD 2
 #define CAN20KBAUD 3 
 #define CAN125KBAUD 4
 
-
-extern uint8_t maxcansize;
-
-#define CANBUFSIZE 24
-
-typedef struct{
-    uint8_t type;
-    uint8_t inpos;
-    uint8_t outpos;
-    uint8_t diff;
-    uint8_t data[CANBUFSIZE];
-} can_circular_buffer;
-
-typedef struct{
-    uint32_t ID;
-    uint8_t data[8];
-    uint8_t length;
-    uint8_t priority;
-    uint16_t time_stamp;
-} can_data_reg;
-  
-//volatile can_data_reg * const CAN0rxbuf 
-
-bool CanBufPush(can_circular_buffer *buf, int bufsize, char in);
-//bool CanBufPop(can_circular_buffer *buf, int bufsize);
 
 #endif

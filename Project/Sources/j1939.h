@@ -7,7 +7,18 @@
 #include "hardware.h"
 #include "j1939-signals.h"
 
-void CAN_RXRoutine(void);
+void CAN0_RXRoutine(void);
+
+#define CAN_ID_PTRN_1 J1939_ID_HSC1 | (J1939_CHANNEL_A_INLET_ID << 8) | J1939_ECU_ID                                                       //HSC1
+#define CAN_MASK_PTRN_1 0
+#ifdef CH_A_ONLY
+#define CAN_ID_PTRN_2 (J1939_ID_HSS1 & J1939_ID_EVSE1AC3PL) | (J1939_ECU_ID & J1939_CHANNEL_A_INVERTER_ID)                                 //HSS1 and EVSE1AC3PL
+#define CAN_MASK_PTRN_2 (J1939_ID_HSS1 ^ J1939_ID_EVSE1AC3PL)
+#else
+#define CAN_ID_PTRN_2 (J1939_ID_HSS1 & J1939_ID_EVSE1AC3PL) | (J1939_ECU_ID & J1939_CHANNEL_A_INVERTER_ID & J1939_CHANNEL_B_INVERTER_ID)   //HSS1 and EVSE1AC3PL for each channel
+#define CAN_MASK_PTRN_2 (J1939_ID_HSS1 ^ J1939_ID_EVSE1AC3PL) | ((J1939_ECU_ID ^ J1939_CHANNEL_A_INVERTER_ID) |                             \
+                                                                 (J1939_ECU_ID ^ J1939_CHANNEL_B_INVERTER_ID))
+#endif
 
 typedef enum {
     EV_MODE_UNKNOWN = 0x00,
@@ -91,14 +102,6 @@ typedef struct  {
   EVSE1AC3PL_t EVSE1AC3PL_A;
   EVSE1AC3PL_t EVSE1AC3PL_B;
 } j1939_messages_received_t;
-
-typedef struct {
-    uint32_t id;
-    void *obj;
-    int (*parser) (void *obj, uint8_t *buf, int offset, int buf_size);
-    int (*handler) (void *obj);
-    uint8_t process_message_p;
-} j1939_msg_dispatcher_t;
 
 void j1939_init_hardware(void);
 void send_j1939_messages(void);

@@ -13,9 +13,10 @@ uint8_t SCI2_receive_flag    = FALSE;
 uint8_t debug_gate = FALSE;
 bool timebase_flag = FALSE;
 
+bool j1939_charge_desired = FALSE;
+
 /*********<Pilot**********/
 PILOT_VOLTAGE Pilot_Voltage[2], Negative_Pilot_Voltage[2];
-PROX_VOLTAGE Prox_Voltage[2];
 IEC_PROX_VOLTAGE IEC_Prox_Voltage[2];
 
 volatile bool pilot_in_range[2], PWM_present[2], PWM_5duty[2];
