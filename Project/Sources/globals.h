@@ -14,7 +14,7 @@ extern uint8_t SCI2_receive_flag;
 extern uint8_t debug_gate;
 extern bool timebase_flag;
 
-extern bool j1939_charge_desired;
+extern bool j1939_charge_desired[2];
 
 /*********<Pilot**********/
 extern PILOT_VOLTAGE Pilot_Voltage[], Negative_Pilot_Voltage[];

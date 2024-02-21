@@ -26,14 +26,19 @@ static j1939_messages_received_t j1939_messages_received;
 void j1939_init_hardware(void) {
   InitCAN_ExtendedIDs(CAN0_BASE_ADDRESS, NORMAL_MODE, CAN250KBAUD, CAN_ID_PTRN_1, CAN_MASK_PTRN_1, CAN_ID_PTRN_2, CAN_MASK_PTRN_2);
 
-  mem_init_ff(&j1939_messages_to_send, sizeof(j1939_messages_to_send_t));
-  mem_init_ff(&last_HSC1, sizeof(HSC1_t));
+  mem_init(&j1939_messages_to_send, sizeof(j1939_messages_to_send_t), 0xFF);
+  mem_init(&last_HSC1, sizeof(HSC1_t), 0xFF);
 }
 
 uint32_t timeout_HSC1(void *ptr) {
   disable_desire_to_charge(A, CHARGING_DISABLED_J1939);
+  PrintConsoleString("Disable Charge Timeout A\r\n", 0);
+  return 0;
+}
+
+uint32_t timeout_HSC1_B(void *ptr) {
   disable_desire_to_charge(B, CHARGING_DISABLED_J1939);
-  PrintConsoleString("Disable Charge Timeout\r\n", 0);
+  PrintConsoleString("Disable Charge Timeout B\r\n", 0);
   return 0;
 }
 
@@ -47,24 +52,58 @@ int handle_HSC1(void *msg) {
   
   switch(HSC1_msg->HybridPropulsionModeRequest) {
     case J1939_SPN7889_INCREASING:
-      j1939_charge_desired = TRUE;
+      j1939_charge_desired[A] = TRUE;
       break;
     case J1939_SPN7889_ONLY:
       enable = FALSE;
-      j1939_charge_desired = FALSE;
+      j1939_charge_desired[A] = FALSE;
       break;
     default:
-      j1939_charge_desired = FALSE;
+      j1939_charge_desired[A] = FALSE;
   }  
 
 #ifdef J1939_REQD_FOR_CHARGE
   if (enable) {
     enable_desire_to_charge(A, CHARGING_DISABLED_J1939);
-    enable_desire_to_charge(B, CHARGING_DISABLED_J1939);
     schedule_and_reset(J1939_1S_MESSAGE_TIMEOUT, timeout_HSC1, NULL);
     //PrintConsoleString("Enable Charge\r\n",0);
   } else {
     disable_desire_to_charge(A, CHARGING_DISABLED_J1939);
+    PrintConsoleString("Disable Charge\r\n", 0);
+  }
+#endif
+
+  //PrintConsoleString("18808249 HSC1\r\n",0);
+  return (msg) ? 1 : 0;
+}
+
+int handle_HSC1_B(void *msg) {
+  HSC1_t *HSC1_msg = (HSC1_t *)msg;
+  bool enable = FALSE;
+  
+  if (HSC1_msg->HVESChargeConsent == J1939_SPN10148_ALLOWED) {
+    enable = TRUE;
+  }
+  
+  switch(HSC1_msg->HybridPropulsionModeRequest) {
+    case J1939_SPN7889_INCREASING:
+      j1939_charge_desired[B] = TRUE;
+      break;
+    case J1939_SPN7889_ONLY:
+      enable = FALSE;
+      j1939_charge_desired[B] = FALSE;
+      break;
+    default:
+      j1939_charge_desired[B] = FALSE;
+  }  
+
+
+#ifdef J1939_REQD_FOR_CHARGE
+  if (enable) {
+    enable_desire_to_charge(B, CHARGING_DISABLED_J1939);
+    schedule_and_reset(J1939_1S_MESSAGE_TIMEOUT, timeout_HSC1_B, NULL);
+    //PrintConsoleString("Enable Charge\r\n",0);
+  } else {
     disable_desire_to_charge(B, CHARGING_DISABLED_J1939);
     PrintConsoleString("Disable Charge\r\n", 0);
   }
@@ -145,11 +184,18 @@ int handle_EVSE1AC3PL_B(void *msg) {
 can_msg_dispatcher_t j1939_msg_dispatch_tbl[] = {
     {
         J1939_ID_HSC1 | (J1939_CHANNEL_A_INLET_ID << 8) | J1939_ECU_ID,
-        &j1939_messages_received.HSC1,
+        &j1939_messages_received.HSC1_A,
         read_HSC1,
         handle_HSC1,
         1,
     },
+    {
+        J1939_ID_HSC1 | (J1939_CHANNEL_B_INLET_ID << 8) | J1939_ECU_ID,
+        &j1939_messages_received.HSC1_B,
+        read_HSC1,
+        handle_HSC1_B,
+        CHANNEL_B_ACTIVE,
+    },    
     {
         J1939_ID_HSS1 | J1939_ECU_ID,
         &j1939_messages_received.HSS1,

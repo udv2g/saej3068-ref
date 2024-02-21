@@ -286,6 +286,7 @@ interrupt VectorNumber_Vsci2 void SCI2_ISR(void){
     }
   }
 
+  if(SCI2ASR1_RXEDGIF) SCI2ASR1_RXEDGIF=1;
 }
 
 /*******************************************************

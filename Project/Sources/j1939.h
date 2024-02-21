@@ -97,7 +97,8 @@ typedef struct  {
 } j1939_messages_to_send_t;
 
 typedef struct  {
-  HSC1_t HSC1;
+  HSC1_t HSC1_A;
+  HSC1_t HSC1_B;
   HSS1_t HSS1;
   EVSE1AC3PL_t EVSE1AC3PL_A;
   EVSE1AC3PL_t EVSE1AC3PL_B;

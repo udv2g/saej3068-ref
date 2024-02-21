@@ -14,11 +14,120 @@ void init_hardware(void)  {
   InitADC();
   InitRTI();
   InitSCIBuffers();
-  SCIOpenCommunication(SCI2_BUF, UART_BAUD, FALSE, SCI_RIE_ON); // Initialize SCI2 with configured baud and interrupts
+  SCIOpenCommunication(SCI2_BUF, UART_BAUD, TRUE, SCI_RIE_ON); // Initialize SCI2 with configured baud and interrupts
   init_pwm();
 #ifdef EV_CONFIG
   j1939_init_hardware();
 #endif
+}
+
+/*******************************************************
+ * Sleep
+ *******************************************************/
+
+uint8_t unpluggedCount = 0; 
+ 
+void near Cpu_SetStopMode() {
+  
+#ifdef S12X  
+
+  //uint8_t save_PITCFLMT = PITCFLMT;
+  //uint8_t save_ECT_TSCR1 = ECT_TSCR1;
+
+  DisableInterrupts;
+
+  CRGINT_RTIE = 0;  // Disable RTIE
+  CRGFLG_RTIF = 1;  // Clear RTIF
+
+  //SetEvState(EV_B1); //Won't wake up unless in state b
+  //Also stoppes any charging if it is still going on
+        
+  //LED3 = 0;
+  //LED2 = 0;
+  ///LED1 = 0;
+  //LED0 = 0;
+      
+  //CLKSEL_PSTP = 0;  //Turn off pseudo-stop mode
+  ECT_TSCR1_TEN = 0;
+  //PLLCTL_FSTWKP = 1;
+  
+  PITCFLMT_PITE = 0; //Disable PIT Module
+  PITTF = 0xFF;      //clear any remaining PIT INT
+  
+  //PLL_Disable();
+      
+  //PowerOff();    //turns off the ARM board 
+                       //has other side effects on 5.0 board
+      
+  //FIXME WE NEED TO THING ABOUT OTHER THINGS TO POWER OFF                
+  
+  //DelayMs(500); // wait for things to calm down
+  //sleeping = 1;
+    
+  PILOTA_WAKEUP_INTERRUPT_ENABLE = 1; 
+#ifdef CH_A_ONLY
+  PILOTB_WAKEUP_INTERRUPT_ENABLE = 1;
+#endif
+        
+  EnableInterrupts;
+        
+  SLEEP_SHDN = 1; ///turn off power to stuff
+  CAN_SLEEP =  1;
+
+  LIN_A_ENABLE = 0;
+  //SetBStateA();
+
+
+#ifdef CH_A_ONLY
+  LIN_B_ENABLE = 0;
+//  SetBStateA();
+#endif  
+
+ CAN1CTL1_CANE = 0;
+ CAN0CTL1_CANE = 0;
+    
+  PrintConsoleString("Sleep\n\n",0);
+  DelayMs(50);
+ 
+  asm ANDCC #0x7F;  //Who knows!
+  asm STOP;
+
+  unpluggedCount = 0;
+  
+  _Startup();
+    
+ /* configure_oscillator();
+  
+  PITCFLMT = save_PITCFLMT;
+  ECT_TSCR1 = save_ECT_TSCR1;
+  CRGINT_RTIE = 1;
+
+  EnableInterrupts;
+  
+  PrintConsoleString("Wake\n\n",0);
+  //wakeup            */
+#endif   
+}
+
+uint32_t sleepCheck(void *a) {  
+
+#ifndef CH_A_ONLY
+  if((!evse_prox_present_p(A)) || (!evse_prox_present_p(B)))
+    if (unpluggedCount < 200)  unpluggedCount++;
+    // = ((!evse_present_p(A)) && (!evse_present_p(B)));  
+  else
+    unpluggedCount = 0;  
+#else
+  if(!evse_prox_present_p(A))
+    if (unpluggedCount < 200) unpluggedCount++;
+  else
+    unpluggedCount = 0;
+    // = !evse_present_p(A);
+#endif  
+
+  if(unpluggedCount > 50) Cpu_SetStopMode();
+  
+  return SLEEP_CHECK_DELAY;
 }
 
 /*******************************************************
@@ -28,6 +137,7 @@ void init_hardware(void)  {
 //SYNDIV=0b11 and VCOFRQ = 0b11 for 48MHz for S12X ONLY
 
 void configure_oscillator(void) {
+  COP_Enable();
   //configure oscillator for 24 MHz Fbus (pg. 387 (s12x pg. 486))
   PLL_Disable();              //disable PLL before changing settings
   Osc_Enable();               //enable external oscillator
@@ -72,14 +182,20 @@ void init_io(void)  {
   DDRS_DDRS4 = OUTPUT; PTS_PTS4 = 0;
 
   //block 3
-  DDRP_DDRP7 = INPUT;         //Over Temp Cutout
   DDRP_DDRP5 = OUTPUT;        //PWM_A
   DDRP_DDRP4 = OUTPUT;        //PWM_B
   DDRP_DDRP3 = INPUT;         //Pilot_det_B
   DDRP_DDRP2 = INPUT;         //Pilot_det_A
 
   //drive unused pins low
+  #ifndef WHITEBOARD_HARDWARE
+  DDRP_DDRP7 = INPUT;         //Over Temp Cutout
   DDRP_DDRP6 = OUTPUT; PTP_PTP6 = 0;
+  #else 
+  DDRP_DDRP7 = OUTPUT;         //CHARGE_LED_A
+  DDRP_DDRP6 = OUTPUT;         //CHARGE_LED_B
+  #endif
+    
   DDRP_DDRP1 = OUTPUT; PTP_PTP1 = 0;
   DDRP_DDRP0 = OUTPUT; PTP_PTP0 = 0;
 
@@ -155,6 +271,18 @@ void init_io(void)  {
   AD14 => XX0AD6
   AD15 => XX0AD7
   */
+
+#ifdef WHITEBOARD_HARDWARE 
+  DDR0AD_DDR0AD7 = OUTPUT;    //Contractor_A
+  PT0AD_PT0AD7 = 1;
+
+  DDR0AD_DDR0AD6 = OUTPUT;    //Contractor_B 
+  PT0AD_PT0AD6 = 1;
+  
+  DDR0AD_DDR0AD5 = OUTPUT;    // 
+  DDR0AD_DDR0AD4 = OUTPUT;    //
+#endif  
+  
   
 #ifndef S12X
   DDR0AD_DDR0AD7 = OUTPUT;    //Relay_Control_B_Plus

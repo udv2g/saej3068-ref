@@ -61,5 +61,7 @@ END
 STACKSIZE 0x800
 
 VECTOR 0 _Startup /* reset vector: this is the default entry point for a C/C++ application. */
+VECTOR 1 _Startup
+VECTOR 2 _Startup
 //VECTOR 0 Entry  /* reset vector: this is the default entry point for an Assembly application. */
 //INIT Entry      /* for assembly applications: that this is as well the initialization entry point */

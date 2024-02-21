@@ -1,9 +1,11 @@
 ---
 Introduction
 ---
-This is a hardware and software implementation of the communications ([LIN-CP](https://en.wikipedia.org/wiki/SAE_J3068#Digital_Communication_for_AC_charging_%28LIN-CP%29)) portion of SAE J3068 to accompany the upcoming second edition of that standard.  **The implementation is incomplete, does not yet meet all requirements of the standard, and has not been exhaustively tested.**  Some references in the code to the standard have not yet been updated to the second edition. The known deficiencies are noted in the following sections.
+This is a hardware and software implementation of the communications ([LIN-CP](https://en.wikipedia.org/wiki/SAE_J3068#Digital_Communication_for_AC_charging_%28LIN-CP%29)) portion of SAE J3068 to accompany the upcoming second edition of that standard.  **The implementation is incomplete, does not yet meet all requirements of the standard, and has not been exhaustively tested.**  ~Some references in the code to the standard have not yet been updated to the second edition.~ (should be corrected 2-24) The known deficiencies are noted in the following sections.
 
 It can also be configured for SAE J1772/IEC 61851-1 Annex A, but this is not the primary intention and may have subtle incompatibilities.  The upcoming revision of IEC 61851-1 Annex D is expected to be the same as SAE J3068 and is therefore supported, but cases A an B (a socket outlet on the EVSE) need to be considered.  The published version of Annex D can be supported with modification.
+
+Initial support for SAE J3068/1 has been added as of 2/24.  See below.  The LDF file, and associated generated code include the frames/signals from SAE J3068/2.  Some skeletal support for SAE J3068/2 is included in the code but very minimal.  Full support is anticipated by 2H24.
 
 ---
 Hardware
@@ -123,3 +125,16 @@ Explanation of Hardware Features
 - `uC_Sense_Signal_X_Unlock` and `Sense_Signal_X_Unlock_Return` are unused for this lock type.
 
 Other lock types are not currently supported by the software, but not having a lock is supported (not allowed in the standard, but useful for testing).
+
+---
+SAE J3068/1 Support
+---
+Protocol version support and priority is configured in `config.h` with the define
+
+        #define SUPPORTED_PVERSIONS  PVER_SLASH_1,
+
+The base Protocol Version defined in SAE J3068 (2) and the Protocol Version associated with PWM-CP (as historically defined in SAE J1772 and now SAE J3400) (0) are automatically included as appropriate.  Other Protocol Versions listed in the define will be enabled and prioritized left to right.  To enable only Protocol Version 2 use
+
+        #define SUPPORTED_PVERSIONS
+
+Only the Identification phase is implemented with a limited subset of generic information (e.g. VIN = `VINgoesHere234567`).  `ids-handler.c` can be regenerated using the code generator included in [the emulator repo](https://github.com/udv2g/saej3068-emulator) to add, remove, or change the fields supported, including support for the data phase.

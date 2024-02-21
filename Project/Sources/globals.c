@@ -13,7 +13,7 @@ uint8_t SCI2_receive_flag    = FALSE;
 uint8_t debug_gate = FALSE;
 bool timebase_flag = FALSE;
 
-bool j1939_charge_desired = FALSE;
+bool j1939_charge_desired[2] = {FALSE,FALSE};
 
 /*********<Pilot**********/
 PILOT_VOLTAGE Pilot_Voltage[2], Negative_Pilot_Voltage[2];

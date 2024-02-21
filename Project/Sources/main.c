@@ -112,7 +112,10 @@ void main(void) {
   unlock(B);
   schedule_and_reset(LOCK_CHECK_DELAY, verifyLockBStatus, NULL);
 #endif
+  schedule_and_reset(SLEEP_CHECK_DELAY, sleepCheck, NULL);
 #endif
+
+  //PrintConsoleString("Startup\r\n",0);
 
   for (;;) {
     _FEED_COP(); /* feeds the dog */
@@ -161,7 +164,7 @@ void main(void) {
        schedule_and_reset(VMU_WAKEUP_TIME, wakeup_timeout, NULL);
     }
     
-    VMU_WAKEUP = (wakeup && (wakeup_timer || j1939_charge_desired));
+    VMU_WAKEUP = (wakeup && (wakeup_timer || j1939_charge_desired[A] || j1939_charge_desired[B] ));
     
     last_wakeup = wakeup;
 

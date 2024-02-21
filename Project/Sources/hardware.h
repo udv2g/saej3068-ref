@@ -18,6 +18,8 @@ void init_io(void);
 void init_pwm(void);
 void InitRTI(void);
 
+uint32_t sleepCheck(void *);
+
 /*******************************************************
  * Constants
  ********************************************************/
@@ -91,7 +93,20 @@ uint8_t ProxBReadADC(void);
 #define UC_PILOT_A_STATE_C    PTT_PTT3
 #define UC_PILOT_A_STATE_B    PTT_PTT2
 
-#ifndef PRE_RELEASE_HARDWARE
+
+#if defined(PRE_RELEASE_HARDWARE)
+#define CONTACTOR_B_CLOSE     PTJ_PTJ4
+#define CONTACTOR_B_ERROR     PTJ_PTJ5
+#define CONTACTOR_A_ERROR     PTJ_PTJ6
+#define CONTACTOR_A_CLOSE     PTJ_PTJ7
+
+#elif defined(WHITEBOARD_HARDWARE)
+#define CONTACTOR_B_CLOSE     PT0AD_PT0AD6  //NOTE inverted logic
+#define CONTACTOR_B_ERROR     PTJ_PTJ5
+#define CONTACTOR_A_ERROR     PTJ_PTJ6
+#define CONTACTOR_A_CLOSE     PT0AD_PT0AD7  //NOTE inverted logic
+
+#else
 #define CONTACTOR_B_ERROR     PTT_PTT5
 #define CONTACTOR_B_CLOSE     PTT_PTT4
 #define CONTACTOR_A_ERROR     PTT_PTT3
@@ -102,10 +117,22 @@ uint8_t ProxBReadADC(void);
 
 //block 3
 #define OVER_TEMP_CUTOUT      PTP_PTP7
+
+#ifdef WHITEBOARD_HARDWARE
+#define PWM_A                 PTP_PTP4
+#define PWM_B                 PTP_PTP5
+#define PILOT_DET_A           PTP_PTP2
+#define PILOT_DET_B           PTP_PTP3
+
+#define CHARGE_LED_A          PTP_PTP6
+#define CHARGE_LED_B          PTP_PTP7
+
+#else
 #define PWM_A                 PTP_PTP5
 #define PWM_B                 PTP_PTP4
 #define PILOT_DET_B           PTP_PTP3
 #define PILOT_DET_A           PTP_PTP2
+#endif
 
 //block 4
 #ifndef S12X
@@ -126,13 +153,6 @@ uint8_t ProxBReadADC(void);
 #define UC_SENSE_SIGNAL_A_UNLOCK  PORTA_PA5
 #define UC_SENSE_SIGNAL_B_LOCK    PORTA_PA6
 #define UC_SENSE_SIGNAL_B_UNLOCK  PORTA_PA7
-#endif
-
-#ifdef PRE_RELEASE_HARDWARE
-#define CONTACTOR_B_CLOSE     PTJ_PTJ4
-#define CONTACTOR_B_ERROR     PTJ_PTJ5
-#define CONTACTOR_A_ERROR     PTJ_PTJ6
-#define CONTACTOR_A_CLOSE     PTJ_PTJ7
 #endif
 
 //block 7
@@ -161,12 +181,23 @@ uint8_t ProxBReadADC(void);
  * PWM
  ********************************************************/
 
+#ifdef WHITEBOARD_HARDWARE
+#define EnablePWMA() PWME_PWME4 = 1
+#define DisablePWMA() PWME_PWME4 = 0
+#define EnablePWMB() PWME_PWME5 = 1
+#define DisablePWMB() PWME_PWME5 = 0
+#define SetPilotADutyCycleRaw(d) PWMDTY4 = d
+#define SetPilotBDutyCycleRaw(d) PWMDTY5 = d 
+
+#else
 #define EnablePWMA() PWME_PWME5 = 1
 #define DisablePWMA() PWME_PWME5 = 0
 #define EnablePWMB() PWME_PWME4 = 1
 #define DisablePWMB() PWME_PWME4 = 0
 #define SetPilotADutyCycleRaw(d) PWMDTY5 = d
 #define SetPilotBDutyCycleRaw(d) PWMDTY4 = d
+#endif
+ 
 
 #define EnablePWM(x) if(x) { EnablePWMB(); } else { EnablePWMA(); }
 #define DisablePWM(x) if(x) { DisablePWMB(); } else { DisablePWMA(); }

@@ -45,10 +45,18 @@ bool mem_compare(void *obj1_p, void *obj2_p, uint8_t size) {
   return TRUE;
 }
 
-void mem_init_ff(void *obj_p, uint8_t size) {
+void mem_init(void *obj_p, uint8_t size, uint8_t value) {
   uint8_t i, *obj_u8_p = obj_p;
 
   for (i = 0; i < size; i++) {
-    obj_u8_p[i] = 0xFF;
+    obj_u8_p[i] = value;
+  }
+}
+
+void mem_copy(void *source_p, void *dest_p, uint8_t size) {
+  uint8_t i, *source_u8_p = source_p, *dest_u8_p = dest_p;
+
+  for (i = 0; i < size; i++) {
+    dest_u8_p[i] = source_u8_p[i];
   }
 }

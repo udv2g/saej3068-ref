@@ -741,9 +741,19 @@ void DetermineEvseState(uint8_t ch, DETERMINE_STATE_CODE code) {
 
   if (contactor_state[ch] != last_contactor_state[ch]) {
     if (ch) {
+#ifdef WHITEBOARD_HARDWARE
+      CONTACTOR_B_CLOSE = !contactor_state[ch];
+      CHARGE_LED_B = contactor_state[ch];
+#else
       CONTACTOR_B_CLOSE = contactor_state[ch];
+#endif      
     } else {
+#ifdef WHITEBOARD_HARDWARE
+      CONTACTOR_A_CLOSE = !contactor_state[ch];
+      CHARGE_LED_A = contactor_state[ch];
+#else
       CONTACTOR_A_CLOSE = contactor_state[ch];
+#endif      
     }
     command_contactor(ch, contactor_state[ch]);
   }
@@ -867,18 +877,13 @@ uint8_t LookupPilotState(uint8_t byte_value) {
 
 uint8_t LookupProxState(uint8_t byte_value) {
 
-#ifdef PROX_LEARN_EVSE
+#ifdef DISABLE_PROX_CHECKING
 
-  if ((EVSEProxMode == EVSE_LEARN_PROX) && (Pilot_Voltage[A] == STATE_C)) {  //FIXME
-    ProxSum += byte_value;
-    ProxSumCount++;
-    return DISCONNECTED;
-  } else if (EVSEProxMode == EVSE_LOCK_PROX) {
-    if ((byte_value >= EVSEProxValueMin) && (byte_value <= EVSEProxValueMax))
-      return CONNECTED_ON;
-    else
-      return DISCONNECTED;
-  }
+  #ifdef TYPE_I_COUPLER
+    return IEC_J1772_RELEASED;
+  #else
+    return IEC_63A;
+  #endif
 
 #else
 
@@ -906,8 +911,6 @@ uint8_t LookupProxState(uint8_t byte_value) {
     return IEC_ERROR_LOW;
 
 #endif
-
-  return 0;
 }
 
 uint8_t LookupDutyState(uint8_t duty) {
@@ -983,6 +986,7 @@ three_phase_currents_t DetermineEvMaxC(uint8_t ch, three_phase_currents_t evse_m
 
 #ifdef EV_CONFIG //only check cordset as an EV
 #ifndef TYPE_I_COUPLER 
+  cordset_max_c = 0;
   switch (IEC_Prox_Voltage[ch]) {
     case IEC_13A:
       cordset_max_c = 13;
@@ -1000,13 +1004,9 @@ three_phase_currents_t DetermineEvMaxC(uint8_t ch, three_phase_currents_t evse_m
         cordset_max_c = 63;
       }
       break;
-    case IEC_ERROR_LOW:
+    case IEC_ERROR_LOW:     //set to zero for these cases above
     case IEC_ERROR_HIGH:
-      cordset_max_c = 0;
-      break;
     case IEC_DISCONNECTED:
-      cordset_max_c = 0;
-      break;
     default:
       (void)0; //unhandeled cases warning
   }

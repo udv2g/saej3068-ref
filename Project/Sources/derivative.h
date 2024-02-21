@@ -31,6 +31,9 @@
                         while(!CRGFLG_LOCK)        //Wait till the PLL VCO is within tolerance
 #define OSC_Stabilize() (void) 0
 
+#define COP_Enable()    COPCTL = 0b01000101
+//101 2^22/12MHZ = .3 sec watchdog
+
 #else
 #define __REFDIV    CPMUREFDIV_REFDIV
 #define __REFFRQ    CPMUREFDIV_REFFRQ
@@ -38,11 +41,15 @@
 #define __VCOFRQ    CPMUSYNR_VCOFRQ
 #define __POSTDIV   CPMUPOSTDIV
 #define __PLLSEL    CPMUCLKS_PLLSEL
+#define __SETCOP    COPCTL
 
 #define Osc_Enable()    CPMUOSC_OSCE = 1
 #define PLL_Disable()   (void) 0
 #define PLL_Enable()    (void) 0
 #define OSC_Stabilize() while(!CPMUFLG_UPOSC)
+
+#define COP_Enable()    CPMUCLKS_COPOSCSEL1 = 1;  /*set COP to ACLK (10khz)*/ \
+                        CPMUCOP_CR2 = 1           /*for ACLK 2^13 cycles set 0.8 seconds*/
 #endif
 
 /*******************************************************

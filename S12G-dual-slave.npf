@@ -26,7 +26,7 @@ network {
 	max_message_length = 8;
 	LI0{
 		node = VehicleAC_charger_slave;		/* Name of node described in LDF (must check consistence with LDF) */
-		file = "J3068_20kbpsVer11_3.ldf";			/* Path to LDF file */
+		file = "J3068-2.ldf";			/* Path to LDF file */
 		device = s12_sci0;		/* Identifier to LIN Hardware, related to LIN HARDWARE DEFINITION */
 		support_sid    {
          READ_BY_IDENTIFIER      = 178;
@@ -38,7 +38,7 @@ network {
 	}
 	LI1{
 		node = VehicleAC_charger_slave;		/* Name of node described in LDF (must check consistence with LDF) */
-		file = "J3068_20kbpsVer11_3B.ldf";			/* Path to LDF file */
+		file = "J3068-2B.ldf";			/* Path to LDF file */
 		device = s12_sci1;		/* Identifier to LIN Hardware, related to LIN HARDWARE DEFINITION */
 		support_sid    {
          READ_BY_IDENTIFIER      = 178;
