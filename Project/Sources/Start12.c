@@ -14,10 +14,24 @@ Note: C++ destructors of global objects are NOT yet supported in the HIWARE Obje
 #define __NO_MAIN_OFFSET        /* we do not need the main field in the startup data descriptor */
 #define __NO_STACKOFFSET_OFFSET /* we do not need the stackOffset field in the startup data descriptor */
 
-/*#define __BANKED_COPY_DOWN : allow to allocate .copy in flash area */
+#ifdef S12X
+  #define __BANKED_COPY_DOWN : allow to allocate .copy in flash area
+#endif 
 #if defined(__BANKED_COPY_DOWN) && (!defined(__HCS12X__) || !defined(__ELF_OBJECT_FILE_FORMAT__))
 #error /* the __BANKED_COPY_DOWN switch is only supported for the HCS12X with ELF */
        /* (and not for the HC12, HCS12 or for the HIWARE object file format) */
+#endif
+
+#if __OPTION_ACTIVE__("-MapFlash")
+#define __MAP_FLASH__
+#endif
+
+#if __OPTION_ACTIVE__("-MapRAM")
+#define __MAP_RAM__
+#endif
+
+#if defined(__MAP_RAM__) && defined(__MAP_FLASH__)
+#error Both cannot be set
 #endif
 
 #include "hidef.h"

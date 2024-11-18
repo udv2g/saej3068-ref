@@ -115,7 +115,7 @@ void main(void) {
   schedule_and_reset(SLEEP_CHECK_DELAY, sleepCheck, NULL);
 #endif
 
-  //PrintConsoleString("Startup\r\n",0);
+PrintConsoleString("Startup\r\n",0);
 
   for (;;) {
     _FEED_COP(); /* feeds the dog */

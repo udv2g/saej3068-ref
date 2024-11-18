@@ -263,9 +263,9 @@ void print_info_code_change(uint8_t ch, uint8_t id, uint8_t code, uint8_t op){	/
 	PrintCmdsHex(code);
 	PrintCmdsString(xmit_buffer2,0);
 	if (id)	{
-		PrintCmdsString(SE_Info_Codes[code],0);
+		PrintCmdsString((signed char *const)(SE_Info_Codes[code]),0);
 	}	else	{
-		PrintCmdsString(EV_Info_Codes[code],0);
+		PrintCmdsString((signed char *const)(EV_Info_Codes[code]),0);
 	}
 	PrintCmdsString("\r\n",0);
 }
@@ -297,9 +297,9 @@ void print_all_info_codes_int(uint8_t ch, uint8_t id, uint8_t * buffer, uint8_t 
         PrintConsoleHex(buffer[index]);
         PrintConsoleString("\t", 0);
         if (id)	{
-          PrintConsoleString(SE_Info_Codes[buffer[index]],0);
+          PrintConsoleString((signed char *const)(SE_Info_Codes[buffer[index]]),0);
         }	else	{
-          PrintConsoleString(EV_Info_Codes[buffer[index]],0);
+          PrintConsoleString((signed char *const)(EV_Info_Codes[buffer[index]]),0);
         }
         PrintConsoleString("\r\n", 0);
       }

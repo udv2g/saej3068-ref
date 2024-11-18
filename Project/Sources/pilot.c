@@ -998,7 +998,7 @@ three_phase_currents_t DetermineEvMaxC(uint8_t ch, three_phase_currents_t evse_m
       cordset_max_c = 32;
       break;
     case IEC_63A:
-      if (Ev_State[ch] == EV_LN || Ev_State[ch] == EV_LR) { //in LIN mode, the maximum current of a "63A" cordset is goverened by the LIN signals
+      if (Ev_State[ch] == EV_LN || Ev_State[ch] == EV_LR) { //in LIN mode, the maximum current of a "63A" cordset is governed by the LIN signals
         cordset_max_c = 255;
       } else {
         cordset_max_c = 63;
@@ -1014,8 +1014,8 @@ three_phase_currents_t DetermineEvMaxC(uint8_t ch, three_phase_currents_t evse_m
 
 #endif
 
-  // Take the min of the MAX_RATED_CURRENT and cordset_max_c
-  if (MAX_RATED_CURRENT < cordset_max_c) cordset_max_c = MAX_RATED_CURRENT;
+  // Take the min of the EV_MAX_CURRENT_L and cordset_max_c
+  if (EV_MAX_CURRENT_L < cordset_max_c) cordset_max_c = EV_MAX_CURRENT_L;
 
   if (cordset_max_c < evse_max_c.pwm) evse_max_c.pwm = cordset_max_c;
   if (cordset_max_c < evse_max_c.C1_L1) evse_max_c.C1_L1 = cordset_max_c;
@@ -1023,7 +1023,8 @@ three_phase_currents_t DetermineEvMaxC(uint8_t ch, three_phase_currents_t evse_m
   if (cordset_max_c < evse_max_c.C3_L3) evse_max_c.C3_L3 = cordset_max_c;
   if (cordset_max_c < evse_max_c.C4_N) evse_max_c.C4_N = cordset_max_c;
 
-  if (!prox_safe_to_energize[ch]) {
+#ifdef EV_CONFIG //only check prox as an EV
+  if (!prox_safe_to_energize[ch] || (cordset_max_c < EV_MIN_CURRENT_L)) {          //should never be set below EV min current but set to 0 to avoid inverter faults if it does
     evse_max_c.pwm   = 0;
     evse_max_c.C1_L1 = 0;
     evse_max_c.C2_L2 = 0;
@@ -1031,6 +1032,7 @@ three_phase_currents_t DetermineEvMaxC(uint8_t ch, three_phase_currents_t evse_m
     evse_max_c.C4_N  = 0;
     //$(void)oem_ramp_down();
   }
+#endif
 
   return evse_max_c;
 }

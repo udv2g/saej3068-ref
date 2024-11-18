@@ -118,7 +118,7 @@ uint8_t ProxBReadADC(void);
 //block 3
 #define OVER_TEMP_CUTOUT      PTP_PTP7
 
-#ifdef WHITEBOARD_HARDWARE
+#if defined(WHITEBOARD_HARDWARE)
 #define PWM_A                 PTP_PTP4
 #define PWM_B                 PTP_PTP5
 #define PILOT_DET_A           PTP_PTP2
@@ -136,6 +136,7 @@ uint8_t ProxBReadADC(void);
 
 //block 4
 #ifndef S12X
+
 #define LIN_A_ENABLE          PTJ_PTJ0
 #define LIN_B_ENABLE          PTJ_PTJ1
 #define VMU_WAKEUP            PTJ_PTJ2
@@ -144,7 +145,9 @@ uint8_t ProxBReadADC(void);
 #define UC_SENSE_SIGNAL_A_UNLOCK  PTJ_PTJ5
 #define UC_SENSE_SIGNAL_B_LOCK    PTJ_PTJ6
 #define UC_SENSE_SIGNAL_B_UNLOCK  PTJ_PTJ7
+
 #else
+
 #define LIN_A_ENABLE          PORTA_PA0
 #define LIN_B_ENABLE          PORTA_PA1
 #define VMU_WAKEUP            PORTA_PA2
@@ -153,8 +156,8 @@ uint8_t ProxBReadADC(void);
 #define UC_SENSE_SIGNAL_A_UNLOCK  PORTA_PA5
 #define UC_SENSE_SIGNAL_B_LOCK    PORTA_PA6
 #define UC_SENSE_SIGNAL_B_UNLOCK  PORTA_PA7
-#endif
 
+#endif
 //block 7
 
 #ifndef S12X
@@ -162,8 +165,10 @@ uint8_t ProxBReadADC(void);
 #define RELAY_CONTROL_B_MINUS PT0AD_PT0AD6
 #define RELAY_CONTROL_A_PLUS  PT0AD_PT0AD5
 #define RELAY_CONTROL_A_MINUS PT0AD_PT0AD4
+
 #define PWM_ENABLE_B          PT0AD_PT0AD2
 #define PWM_ENABLE_A          PT0AD_PT0AD1
+
 #else
 #define RELAY_CONTROL_B_PLUS  PORTB_PB7
 #define RELAY_CONTROL_B_MINUS PORTB_PB6
@@ -181,7 +186,7 @@ uint8_t ProxBReadADC(void);
  * PWM
  ********************************************************/
 
-#ifdef WHITEBOARD_HARDWARE
+#if defined(WHITEBOARD_HARDWARE)
 #define EnablePWMA() PWME_PWME4 = 1
 #define DisablePWMA() PWME_PWME4 = 0
 #define EnablePWMB() PWME_PWME5 = 1

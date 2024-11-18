@@ -8,10 +8,10 @@
 #include "globals.h"
 
 #define PREV(i, size) (uint8_t)((index - i + size) % size)
-#define NEXT(i, size) (uint8_t)((index + i) % size)
+#define NEXT(i, size) (uint8_t)((index + i) % size) 
 
 void InitSCIBuffers(void) {
-  CBufInit(&print_c2buf, &SCI2BDH, print_c2buf_data, BUFSIZE);
+  CBufInit(SCI_BUF, &SCI2BDH, print_buf_data, BUFSIZE);
 }
 
 uint8_t get_hex8_from_2char(uint8_t char1, uint8_t char2) {
@@ -31,7 +31,7 @@ uint16_t get_hex16_from_4char(uint8_t *buf, uint8_t index, uint8_t size) {
 
 #define ASCII_LOWERCASE_BIT 0x20
 
-void SCI2_RXRoutine(uint8_t rcv) {
+void SCI_RXRoutine(uint8_t rcv) {
   static uint8_t prev;
 
   SCI2_receive_buffer[SCI2_receive_pointer++] = rcv;
@@ -97,8 +97,8 @@ void SendString(circular_buffer *buf, int8_t *string, uint16_t size) {
   }
 }
 
-/*
-void SendFarString(circular_buffer *buf, int8_t *far string, uint16_t size){
+
+void SendFarString(circular_buffer *buf, int8_t * _FAR_ string, uint16_t size){
     uint16_t i; 
     if (size == 0){
         for (i=0; string[i]!='\0'; i++)
@@ -109,7 +109,7 @@ void SendFarString(circular_buffer *buf, int8_t *far string, uint16_t size){
             (void)SCISendBuffer(buf, string[i]);
     }
 }
-*/
+
 
 #ifdef CRC
 void SendStringC(circular_buffer *buf,
@@ -136,7 +136,7 @@ void SendStringC(circular_buffer *buf,
 }
 
 void SendFarStringC(circular_buffer *buf,
-                    int8_t *far string, uint16_t size, uint16_t *checksum) {
+                    int8_t * _FAR_ string, uint16_t size, uint16_t *checksum) {
   uint16_t i;
   uint16_t index = 0;
   uint16_t crc   = *checksum;
@@ -191,6 +191,19 @@ void SendHexValue(circular_buffer *buf, int raw, uint16_t hex_value) {
     (void)SCISendBuffer(buf, hex_1);
     (void)SCISendBuffer(buf, hex_0);
   }
+}
+
+void SendHexValueFixedW(circular_buffer *buf, uint16_t hex_value){
+  uint8_t hex_0, hex_1, hex_2, hex_3;
+
+  hex_0 = ConvertCharAscii(hex_value & 0x000F);
+  hex_1 = ConvertCharAscii((hex_value >> 4) & 0x000F);
+  hex_2 = ConvertCharAscii((hex_value >> 8) & 0x000F);
+  hex_3 = ConvertCharAscii(hex_value >> 12);
+  (void)SCISendBuffer(buf, hex_3);
+  (void)SCISendBuffer(buf, hex_2);    
+  (void)SCISendBuffer(buf, hex_1);
+  (void)SCISendBuffer(buf, hex_0); 
 }
 
 #ifdef CRC
@@ -267,13 +280,19 @@ void SendLongValue(circular_buffer *buf, uint32_t hex32_value) {
 }
 
 void SendDecValue(circular_buffer *buf, uint16_t dec_value) {
-  uint8_t dec_ones, dec_tens;
-  if (dec_value > 99) // Take care of numbers bigger than 99
-    dec_value = 0;
+  uint8_t dec_ones, dec_tens, dec_thous, dec_tenthou;
 
   dec_ones = dec_value % 10;
-  dec_tens = (uint8_t)(dec_value / 10);
+  dec_tens    = (uint8_t)((dec_value / 10) % 10);
+  dec_thous   = (uint8_t)(dec_value / 100) % 10;
+  dec_tenthou = (uint8_t)(dec_value / 1000);
 
+  if (dec_value > 999) {
+    (void)SCISendBuffer(buf, ConvertCharAscii(dec_tenthou));
+  }
+  if (dec_value > 99) {
+    (void)SCISendBuffer(buf, ConvertCharAscii(dec_thous));
+  }
   if (dec_value > 9) {
     (void)SCISendBuffer(buf, ConvertCharAscii(dec_tens));
   }

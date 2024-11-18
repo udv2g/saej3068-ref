@@ -21,6 +21,7 @@
 #ifndef      _LIN_HW_CFG_H
 #define      _LIN_HW_CFG_H
 #include "derivative.h"
+#include "config.h"
 
 typedef enum {
    SCI0,
@@ -96,8 +97,6 @@ typedef enum {
 #define _SCI3_   0
 #define _SCI4_   0
 #define _SCI5_   0
-
-
 
 /* MCU bus frequency */
 #define MCU_BUS_FREQ       24000000

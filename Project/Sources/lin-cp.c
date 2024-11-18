@@ -5,6 +5,7 @@
 #include "scheduler.h"
 #include "protocol_version_handler.h"
 #include "ids_handler.h"
+#include "j3072_handler.h"
 
 
 // clang-format off
@@ -165,12 +166,20 @@ void InitializeLINvariables(uint8_t ch) {
   LW(ch, l_u8, EvRequestedCurrentN, NotAvail_8bit);
 #pragma MESSAGE DISABLE C4002 //result not used -- ternary operator should not be used for assignements
   l_bool_wr_LI0_EvAwake(1);
+  LW(ch, l_bool, EvGridCodeStatusMod, TRUE);
+  LW(ch, l_u16, EvGridCodeStatus, 0x7FFF);
+  LW(ch, l_u8, EvInverterState, SLEEPSTATE_ON);
+  LW(ch, l_u8, EvPwrCtrlModeAck, 0xFF);
+  LW(ch, l_u16, EvPwrCtrlModesAvail, 0x0000);
+  LW(ch, l_u16, EvPwrCtrlUnitsAvail, PCUNIT_BITMASK(PCUNITS_TOT_WATT) | PCUNIT_BITMASK(PCUNITS_TOT_WATT_VAR));
+
   
   /* for (i = 0; i < 5; i++) // Compiler says this is never used
   { SeSupportedVersion[i] == 255;
   } */
 
   ids_init(ch);
+  j3072_init(ch);
 }
 #pragma MESSAGE WARNING C4002
 
@@ -267,6 +276,10 @@ void InitChecks(uint8_t ch) {
   }
 
   if (initComplete) {
+    if ((SeMaxAmpsL2[ch] == 0) && (SeMaxAmpsL2[ch] == 0)) {     //single-phase SE detected
+      is_single_phase = TRUE;
+    }
+  
     unschedule(init_timeout(ch));
     EvStatusInit[ch] = Complete;
     LW(ch, l_u8, EvStatusInit, EvStatusInit[ch]);
@@ -355,6 +368,19 @@ void DetermineLINCPState(uint8_t ch, SCHEDULE_PICKER_EVENTS SchedulePickerMessag
   if (LFT(ch, SeID)) {
     on_id_frame_receipt(ch);
     LFC(ch, SeID);
+  }
+
+  if (LFT(ch, EvJ3072)) {
+    on_j3072_frame_xmit(ch);
+    LFC(ch, EvJ3072);
+  }
+  if (LFT(ch, SeJ3072)) {
+    on_j3072_frame_receipt(ch);
+    LFC(ch, SeJ3072);
+  }
+
+  if (ev_id_status[ch] == DATA && ev_j3072_status[ch] == SUNSPEC) {   //all ID and certification data has been transmitted and received
+    LW(ch, l_u16, EvPwrCtrlModesAvail, PCMODES_BITMASK(PCMODES_TGC) | PCMODES_BITMASK(PCMODES_TGC_R));
   }
 
   if ((SeNomVoltagesRcvd[ch] && SeMaxCurrentsRcvd[ch]) && ((SeNomVoltsLN[ch] != NotAvail_16bit) || (SeNomVoltsLL[ch] != NotAvail_16bit)))  {  // Perform initialization checks only after all information has been read to prevent unread data from bypassing checks R#:9.6.3.1
@@ -505,7 +531,15 @@ void InitializeLINvariables(uint8_t ch) {
   SchedulePicker[ch]     = StartNull;
   pvers_rcvd[ch]         = FALSE;
 
+  LW(ch, l_u16, SeGridCodeRequest, 0x7FFF);
+  LW(ch, l_u8, SeInverterRequest, 0xF);
+  LW(ch, l_u8, SePwrCtrlMode, PCMODES_NORM_CHRG);
+  LW(ch, l_u8, SePwrCtrlUnits, 0xF);
+  LW(ch, l_u8, SePwrCtrlAuth, PCAUTH_NONE);
+  LW(ch, l_u8, SeTimeStamp, 0xFF);
+
   ids_init(ch);
+  j3072_init(ch);
 
   //testing info codes {
   //set_info_code(ch, SEINFOENTRY_PILOT_FAULT);
@@ -593,6 +627,9 @@ void StartScheduleOp(uint8_t ch) {
       break;
     case PVER_SLASH_1:
       LSS(ch, Op3, 0); // Start the J3068/1 Op schedule
+      break;
+    case PVER_SLASH_2:
+      LSS(ch, Op252, 0);
       break;
   }
 }
@@ -834,6 +871,10 @@ void DetermineLINCPState(uint8_t ch, SCHEDULE_PICKER_EVENTS SchedulePickerMessag
         }
       } else if ((EvMaxVoltsFrame[ch] == Incompatible) || (EvCurrentsFrame[ch] == Incompatible) || (EvMinVoltsFrame[ch] == Incompatible)) {
         SeStatusInit[ch] = Error2bit;
+        //add check for unconfigured vector EVCC
+        if (!EvMaxVoltsLL[ch] && !EvMaxVoltsLN[ch] && !EvMinAmpsL1[ch] && !EvMinAmpsL2[ch]  && !EvMinAmpsL3[ch] && !EvFrequencies[ch] && !EvMinVoltsLL[ch] && !EvMinVoltsLN[ch])  {
+          DetermineEvseState(ch, BSC_FAILED);
+        }
       }
       WriteSeStatus(ch);
 
@@ -853,17 +894,11 @@ void DetermineLINCPState(uint8_t ch, SCHEDULE_PICKER_EVENTS SchedulePickerMessag
         if ((SeCommVer[ch] != EvSelectedVer[ch]) || (EvStatusVer[ch] != Complete) || (EvStatusInit[ch] != Complete)) {
           SchedulePicker[ch] = StartVer; // Restart if EvSelectedVersion or EvStatus has changed
         }
-        if (SeCommVer[ch] == AnnexD || SeCommVer[ch] == J3068) { // Meaning when J3068 or Annex D is selected
-          if (SeCommVer[ch] == AnnexD) {
-            LINPermitVoltage[ch] = (LR(ch, l_u8, EvStatusOp_EvStatus) == 0); //0=No Error in Annex D
-          } else {
-            LINPermitVoltage[ch] = (LR(ch, l_u8, EvStatusOp_EvStatus) == Permit_V); // = 1 when contactor closure is allowed
-          }
-          LW(ch, l_u8, SeAvailableCurrentL1, (((evse_state[ch].set_c.C1_L1 > 0) && (evse_state[ch].set_c.C1_L1 < EvMinAmpsL1[ch])) ? EvMinAmpsL1[ch] : evse_state[ch].set_c.C1_L1));  //R#:9.6.2.5, any value between 0 and MinAmps must be MinAmps
-          LW(ch, l_u8, SeAvailableCurrentL2, SP((((evse_state[ch].set_c.C2_L2 > 0) && (evse_state[ch].set_c.C2_L2 < EvMinAmpsL2[ch])) ? EvMinAmpsL2[ch] : evse_state[ch].set_c.C2_L2), NotAvail_8bit));
-          LW(ch, l_u8, SeAvailableCurrentL3, SP((((evse_state[ch].set_c.C3_L3 > 0) && (evse_state[ch].set_c.C3_L3 < EvMinAmpsL3[ch])) ? EvMinAmpsL3[ch] : evse_state[ch].set_c.C3_L3), NotAvail_8bit));
-          LW(ch, l_u8, SeAvailableCurrentN, (((evse_state[ch].set_c.C4_N > 0) && (evse_state[ch].set_c.C4_N < EvMinAmpsL1[ch])) ? EvMinAmpsL1[ch] : evse_state[ch].set_c.C4_N));     //Not having EvMinAmpsN is kind of a problem, this is the only solution for 1p and seems reasonable for 3p
-        }
+        LINPermitVoltage[ch] = (LR(ch, l_u8, EvStatusOp_EvStatus) == Permit_V); // = 1 when contactor closure is allowed
+        LW(ch, l_u8, SeAvailableCurrentL1, (((evse_state[ch].set_c.C1_L1 > 0) && (evse_state[ch].set_c.C1_L1 < EvMinAmpsL1[ch])) ? EvMinAmpsL1[ch] : evse_state[ch].set_c.C1_L1));  //R#:9.6.2.5, any value between 0 and MinAmps must be MinAmps
+        LW(ch, l_u8, SeAvailableCurrentL2, SP((((evse_state[ch].set_c.C2_L2 > 0) && (evse_state[ch].set_c.C2_L2 < EvMinAmpsL2[ch])) ? EvMinAmpsL2[ch] : evse_state[ch].set_c.C2_L2), NotAvail_8bit));
+        LW(ch, l_u8, SeAvailableCurrentL3, SP((((evse_state[ch].set_c.C3_L3 > 0) && (evse_state[ch].set_c.C3_L3 < EvMinAmpsL3[ch])) ? EvMinAmpsL3[ch] : evse_state[ch].set_c.C3_L3), NotAvail_8bit));
+        LW(ch, l_u8, SeAvailableCurrentN, (((evse_state[ch].set_c.C4_N > 0) && (evse_state[ch].set_c.C4_N < EvMinAmpsL1[ch])) ? EvMinAmpsL1[ch] : evse_state[ch].set_c.C4_N));     //Not having EvMinAmpsN is kind of a problem, this is the only solution for 1p and seems reasonable for 3p
       }
       break;
     case StartSleep:
@@ -898,6 +933,15 @@ void DetermineLINCPState(uint8_t ch, SCHEDULE_PICKER_EVENTS SchedulePickerMessag
   if (LFT(ch, EvID)) {
     on_id_frame_receipt(ch);
     LFC(ch, EvID);
+  }
+
+  if (LFT(ch, SeJ3072)) {
+    on_j3072_frame_xmit(ch);
+    LFC(ch, SeJ3072);
+  }
+  if (LFT(ch, EvJ3072)) {
+    on_j3072_frame_receipt(ch);
+    LFC(ch, EvJ3072);
   }
 #pragma MESSAGE DISABLE C12056 //debug info incorrect because of optimization or inline assembler
 } // End of DetermineLINCPState (which is not all it does)

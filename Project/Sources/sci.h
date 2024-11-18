@@ -1,13 +1,16 @@
 #ifndef _SCI_H
 #define _SCI_H
 
-#include "types.h"
+#include "types.h"  
+#include "config.h"
+#include "derivative.h"
 
 #define SCI_RIE_OFF 0
 #define SCI_RIE_ON  1
 
 // SCI module numbers
-#define SCI2_BUF &print_c2buf
+
+#define SCI_BUF &print_buf
 
 #define BUFSIZE 240
 
@@ -36,7 +39,7 @@ typedef struct {
   uint16_t size;
 } circular_buffer;
 
-void SCI2_RXRoutine(uint8_t rcv);
+void SCI_RXRoutine(uint8_t rcv);
 
 uint8_t get_hex8_from_2char(uint8_t char1, uint8_t char2);
 uint16_t get_hex16_from_4char(uint8_t *buf, uint8_t index, uint8_t size);
@@ -52,10 +55,10 @@ void SCIOpenCommunication(circular_buffer *buf, uint32_t baud_rate, bool wakeup,
 void SetSCIRIE(circular_buffer *buf, uint8_t mode);
 void SCISendBuffer(circular_buffer *buf, uint8_t c);
 void SendString(circular_buffer *buf, int8_t *string, uint16_t size);
-void SendFarString(circular_buffer *buf, int8_t *far string, uint16_t size);
+void SendFarString(circular_buffer *buf, int8_t * _FAR_ string, uint16_t size);
 void SendStringC(circular_buffer *buf, int8_t *string, uint16_t size, uint16_t *checksum);
 void SendFarStringC(circular_buffer *buf,
-                    int8_t *far string, uint16_t size, uint16_t *checksum);
+                    int8_t * _FAR_ string, uint16_t size, uint16_t *checksum);
 void SendHexValue(circular_buffer *buf, int raw, uint16_t hex_value);
 void SendHexValueC(circular_buffer *buf, uint16_t hex_value, uint16_t *checksum);
 void SendLongValueC(circular_buffer *buf, uint32_t hex32_value,
@@ -65,18 +68,29 @@ void SendDecValue(circular_buffer *buf, uint16_t dec_value);
 void SendCharValueC(circular_buffer *buf, char char_value, uint16_t *checksum);
 uint8_t ConvertCharAscii(uint8_t value);
 void SendLongValue(circular_buffer *buf, uint32_t hex32_value);
+void SendHexValueFixedW(circular_buffer *buf, uint16_t hex_value);
 
-#define PrintS2(x, size) SendString(&print_c2buf, x, size);
-#define PrintDec2(x)     SendDecValue(&print_c2buf, x);
-#define PrintChar2(x)    SCISendBuffer(&print_c2buf, x);
-#define PrintHex2(x)     SendHexValue(&print_c2buf, 0, x);
-#define PrintLongHex2(x) SendLongValue(&print_c2buf, x);
+#define PrintS2(x, size)  SendString(&print_buf, x, size);
+#define PrintDec2(x)      SendDecValue(&print_buf, x);
+#define PrintChar2(x)     SCISendBuffer(&print_buf, x);
+#define PrintHex2(x)      SendHexValue(&print_buf, 0, x);
+#define PrintLongHex2(x)  SendLongValue(&print_buf, x);
+#define PrintFixedHex2(x) SendHexValueFixedW(&print_buf, x)
 
 #define PrintConsoleString(x, y) PrintS2(x, y)
 #define PrintConsoleDec(x)       PrintDec2(x)
 #define PrintConsoleChar(x)      PrintChar2(x)
 #define PrintConsoleHex(x)       PrintHex2(x)
 #define PrintConsoleLongHex(x)   PrintLongHex2(x)
+#define PrintConsoleHexFixedW(x) PrintFixedHex2(x)
+#define PrintConsoleFarString(x,y) SendFarString(&print_buf, x, y);
+
+#define EnPrintConsoleString(e, x, y) if(e) {PrintConsoleString(x, y)}
+#define EnPrintConsoleDec(e, x)       if(e) {PrintConsoleDec(x)}
+#define EnPrintConsoleChar(e, x)      if(e) {PrintConsoleChar(x)}
+#define EnPrintConsoleHex(e, x)       if(e) {PrintConsoleHex(x)}
+#define EnPrintConsoleLongHex(e, x)   if(e) {PrintConsoleLongHex(x)}
+#define EnPrintConsoleHexFixedW(e, x) if(e) {PrintConsoleHexFixedW(x)}
 
 #define PrintCmdsString(x, y) PrintS2(x, y)
 #define PrintCmdsHex(x)       PrintHex2(x)

@@ -136,7 +136,18 @@
 #define   CANRIER_RXFIE_MASK    CAN0RIER_RXFIE_MASK
 #else
 #define VectorNumber_Vcan0rx   VectorNumber_Vcanrx
+#define VectorNumber_Vcan0tx   VectorNumber_Vcantx 
 #define CAN0RFLG               CANRFLG
 #define VectorNumber_Vcan0wkup VectorNumber_Vcanwkup
 #define CAN0RFLG_WUPIF         CANRFLG_WUPIF
+#endif
+
+/*******************************************************
+ * Pointers
+ ********************************************************/
+
+#ifdef S12X
+#define _FAR_ far
+#else
+#define _FAR_
 #endif

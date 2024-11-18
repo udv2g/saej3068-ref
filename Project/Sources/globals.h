@@ -25,7 +25,7 @@ extern volatile bool pilot_in_range[], PWM_present[], PWM_5duty[];
 extern uint8_t Majority_Duty_Cycle[];
 
 extern three_phase_currents_t ev_max_c[];
-
+extern bool is_single_phase;
 /*********Pilot>**********/
 
 /*********<EVSE**********/
@@ -33,8 +33,8 @@ extern struct evse_state_t evse_state[];
 /*********EVSE>**********/
 
 /*********<SCI**********/
-extern circular_buffer print_c2buf;
-extern uint8_t print_c2buf_data[];
+extern circular_buffer print_buf;
+extern uint8_t print_buf_data[];
 /*********SCI>**********/
 
 /*********<LIN**********/
@@ -46,5 +46,15 @@ extern l_u8 SeStatusVer[2], SeStatusInit[2], SeStatusOp[2]; // 3 = Not Available
 extern l_u16 SeNomVoltsLN[2], SeNomVoltsLL[2];
 extern l_u8 SeFrequency[2], EvFrequencies[2];
 /*********LIN>**********/
+
+/*********<SLASH1**********/
+extern uint8_t ev_id_status[2];
+extern uint8_t se_id_status[2];
+/*********SLASH1>**********/
+
+/*********<SLASH2**********/
+extern uint8_t ev_j3072_status[2];
+extern uint8_t se_j3072_status[2];
+/*********SLASH2>**********/
 
 #endif

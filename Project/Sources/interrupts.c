@@ -273,20 +273,23 @@ interrupt VectorNumber_Vsci2 void SCI2_ISR(void){
 
   if(SCI2SR1_RDRF){
     rcv = SCI2DRL;
-    SCI2_RXRoutine(rcv);
+    SCI_RXRoutine(rcv);
   }
 
   if(SCI2SR1_TDRE){
-    if (print_c2buf.inpos == print_c2buf.outpos){ // buffer empty
+    if (print_buf.inpos == print_buf.outpos){ // buffer empty
       SCI2CR2_TIE = 0;  // disable transmit interrupts
     }
     else{
-      SCI2DRL = print_c2buf.data[print_c2buf.outpos];
-      (void)CBufPop(&print_c2buf);
+      SCI2DRL = print_buf.data[print_buf.outpos];
+      (void)CBufPop(&print_buf);
     }
   }
 
   if(SCI2ASR1_RXEDGIF) SCI2ASR1_RXEDGIF=1;
+  
+  if (SCI2SR1 & (SCI2SR1_OR_MASK | SCI2SR1_NF_MASK | SCI2SR1_FE_MASK))
+    rcv = SCI2DRL;   //acknowledge noise, framing, and overflow errors   
 }
 
 /*******************************************************

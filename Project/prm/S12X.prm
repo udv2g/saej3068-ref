@@ -19,10 +19,11 @@ SEGMENTS /* here all RAM/ROM areas of the device are listed. Used in PLACEMENT b
       EEPROM        = READ_ONLY   DATA_NEAR IBCC_NEAR  0x0C00 TO   0x0FFF; 
 
 /* non-paged RAM */
-      RAM           = READ_WRITE  DATA_NEAR            0x2000 TO   0x3FFF; 
+      STACK_AREA           = READ_WRITE  DATA_NEAR     0x2002 TO   0x27FF; 
+      RAM           = READ_WRITE  DATA_NEAR            0x2800 TO   0x3FFF; 
 
 /* non-banked FLASH */
-      ROM_4000      = READ_ONLY   DATA_NEAR IBCC_NEAR  0x4000 TO   0x7FFF; 
+      /*ROM_4000      = READ_ONLY   DATA_NEAR IBCC_NEAR  0x4000 TO   0x7FFF;*/ 
       ROM_C000      = READ_ONLY   DATA_NEAR IBCC_NEAR  0xC000 TO   0xFEFF; 
 /*    VECTORS       = READ_ONLY                        0xFF00 TO   0xFFFF; intentionally not defined: used for VECTOR commands below */
     //OSVECTORS     = READ_ONLY                        0xFF10 TO   0xFFFF;  /* OSEK interrupt vectors (use your vector.o) */
@@ -98,18 +99,21 @@ PLACEMENT /* here all predefined and user segments are placed into the SEGMENTS 
       STRINGS,                /* string literals */
       VIRTUAL_TABLE_SEGMENT,  /* C++ virtual table segment */
     //.ostext,                /* eventually OSEK code  */
-      NON_BANKED,             /* runtime routines which must not be banked */
-      COPY                    /* copy down information: how to initialize variables */
+      NON_BANKED              /* runtime routines which must not be banked */
                               /* in case you want to use ROM_4000 here as well, make sure
                                  that all files (incl. library files) are compiled with the
                                  option: -OnB=b */
                         INTO  ROM_C000/*, ROM_4000*/;
 
-      DEFAULT_ROM       INTO           PAGE_FE,          PAGE_FC, PAGE_FB, PAGE_FA, PAGE_F9, PAGE_F8, 
+      DEFAULT_ROM,
+      COPY                    /* copy down information: how to initialize variables */
+                        INTO           PAGE_FE,          PAGE_FC, PAGE_FB, PAGE_FA, PAGE_F9, PAGE_F8, 
                               PAGE_E7, PAGE_E6, PAGE_E5, PAGE_E4, PAGE_E3, PAGE_E2, PAGE_E1, PAGE_E0;
 
     //.stackstart,            /* eventually used for OSEK kernel awareness: Main-Stack Start */
-      SSTACK,                 /* allocate stack first to avoid overwriting variables on overflow */
+      SSTACK          
+                        INTO  STACK_AREA;
+                       /* allocate stack first to avoid overwriting variables on overflow */
     //.stackend,              /* eventually used for OSEK kernel awareness: Main-Stack End */
       DEFAULT_RAM             /* all variables, the default RAM location */
                         INTO  RAM;
@@ -119,10 +123,10 @@ PLACEMENT /* here all predefined and user segments are placed into the SEGMENTS 
                               RAM_FC, RAM_FD;
 
       DISTRIBUTE        DISTRIBUTE_INTO
-                              ROM_4000, PAGE_FE, PAGE_FC, PAGE_FB, PAGE_FA, PAGE_F9, PAGE_F8, PAGE_E7, 
+                              /*ROM_4000,*/ PAGE_FE, PAGE_FC, PAGE_FB, PAGE_FA, PAGE_F9, PAGE_F8, PAGE_E7, 
                               PAGE_E6, PAGE_E5, PAGE_E4, PAGE_E3, PAGE_E2, PAGE_E1, PAGE_E0;
       CONST_DISTRIBUTE  DISTRIBUTE_INTO
-                              ROM_4000, PAGE_FE, PAGE_FC, PAGE_FB, PAGE_FA, PAGE_F9, PAGE_F8, PAGE_E7, 
+                              /*ROM_4000,*/ PAGE_FE, PAGE_FC, PAGE_FB, PAGE_FA, PAGE_F9, PAGE_F8, PAGE_E7, 
                               PAGE_E6, PAGE_E5, PAGE_E4, PAGE_E3, PAGE_E2, PAGE_E1, PAGE_E0;
       DATA_DISTRIBUTE   DISTRIBUTE_INTO
                               RAM, RAM_FD, RAM_FC;
@@ -135,7 +139,7 @@ ENTRIES /* keep the following unreferenced variables */
   //_vectab OsBuildNumber _OsOrtiStackStart _OsOrtiStart
 END
 
-STACKSIZE 0x100   /* size of the stack (will be allocated in DEFAULT_RAM) */
+STACKSIZE 0x7FE   /* size of the stack (will be allocated in DEFAULT_RAM) */
 
 /* use these definitions in plane of the vector table ('vectors') above */
 VECTOR 0 _Startup /* reset vector: this is the default entry point for a C/C++ application. */

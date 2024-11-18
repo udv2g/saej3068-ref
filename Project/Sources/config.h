@@ -49,7 +49,7 @@
 #define PVER_SLASH_1P  103
 #define PVER_SLASH_2   252
 
-#define SUPPORTED_PVERSIONS  PVER_SLASH_1,
+#define SUPPORTED_PVERSIONS  PVER_SLASH_2, PVER_SLASH_1,
 //#define SUPPORTED_PVERSIONS   //3068/null only
 /*Protocol Versions>*/
 
@@ -65,9 +65,60 @@
 #define CONNTP_ERROR          0xFE
 #define CONNTP_NOTSPECIFIED   0xFF
 
+//PwrCtrlUnits
+#define PCUNITS_PRCT_MAX_WATT         0x00
+#define PCUNITS_PHASE_CURRENT         0x01
+#define PCUNITS_TOT_WATT              0x02
+#define PCUNITS_PRCT_MAX_WATT_VAR     0x08
+#define PCUNITS_PHASE_CURRENT_PF      0x09
+#define PCUNITS_PHASE_CURRENT_THETA   0x0A
+#define PCUNITS_TOT_WATT_VAR          0x0B
+
+#define PCUNIT_BITMASK(x)             (1 << (x))
+
+//PwrCtrlModes
+#define PCMODES_NORM_CHRG       0xFF
+#define PCMODES_CCL             0xB4
+#define PCMODES_TC              0xA3
+#define PCMODES_TGC             0x9A
+#define PCMODES_TC_R            0x8D
+#define PCMODES_TGC_R           0x72
+#define PCMODES_AUTO_EXT        0x39
+#define PCMODES_V2LH            0x17
+#define PCMODES_PROCESSING      0x00
+#define PCMODES_RSVD_1          0xE8
+#define PCMODES_RSVD_2          0xD1
+#define PCMODES_RSVD_3          0xC6
+#define PCMODES_RSVD_4          0x65
+#define PCMODES_RSVD_5          0x5C
+#define PCMODES_RSVD_6          0x2E
+
+#define PCMODES_BITMASK(x)      (1 << (((x) >> 4) & 0x0F))
+
+//Grid Codes
+#define GRIDCODE_UNSUPPORTED    0x0000
+#define GRIDCODE_SETTINGS_A     0x0001
+#define GRIDCODE_SETTINGS_B     0x0002
+#define GRIDCODE_1741_SA        0x0003
+#define GRIDCODE_1741_SB        0x0004
+
+//Sleep States
+#define SLEEPSTATE_OFF          0x0
+#define SLEEPSTATE_DEEP_ON      0x2
+#define SLEEPSTATE_DEEP_OFF     0x3
+#define SLEEPSTATE_ON           0x4
+#define SLEEPSTATE_TRANSITION   0x5
+
+//PwrCtrlAuth
+#define PCAUTH_NONE             0xF
+#define PCAUTH_FORMING          0xA
+#define PCAUTH_DISCHARFE        0x5
+#define PCAUTH_PROCESSING       0x0
+#define PCAUTH_RSVD_1           0x6
+#define PCAUTH_RSVD_2           0x9
+
 /*<Ratings*/
 //Voltages are *10, Currents are *1
-#define MAX_RATED_CURRENT 80
 
 //EVSE
 #define EVSE_INCREASE_SET_C_WAIT_PERIOD 100
@@ -75,15 +126,19 @@
 #define EVSE_MAIN_LOOP     1000
 
 //LIN-CP Specific.  If different settings are to be used for different legs, or for the two channels, modify lin-cp.c and evse_smarts.c
-#include "lin-cp.h"                 //Defines Frequency Enums.  Must be after SE/EV_CONFIG definition
+//#include "lin-cp.h"                 //Defines Frequency Enums.  Must be after SE/EV_CONFIG definition
+//included here instead
+enum {FiftyHz = 1, SixtyHz, FiftyOrSixtyHz};
 
 //SE Settings
 #define SE_FREQUENCY SixtyHz
 #define SE_NOMINAL_VOLTAGE_LL 2080
 #define SE_NOMINAL_VOLTAGE_LN 1200
-#define SE_MAX_CURRENT_L 16
-#define SE_MAX_CURRENT_N 16
-#define SE_CONNTP CONNTP_TYPE_2
+#define SE_MAX_CURRENT_L 48
+#define SE_MAX_CURRENT_N 48
+#define SE_CONNTP CONNTP_TYPE_1
+
+//SE current is capped to EV_MAX_CURRENT_L in DetermineEvMaxC.  FIXME
 
 //EV settings
 #define EV_FREQUENCIES FiftyOrSixtyHz
@@ -91,8 +146,8 @@
 #define EV_MAX_VOLTAGE_LN 2770
 #define EV_MIN_VOLTAGE_LL 2080
 #define EV_MIN_VOLTAGE_LN 1200
-#define EV_MAX_CURRENT_L 32
-#define EV_MAX_CURRENT_N 32
+#define EV_MAX_CURRENT_L 48
+#define EV_MAX_CURRENT_N 48
 #define EV_MIN_CURRENT_L 0
 #define EV_CONNTP CONNTP_TYPE_2
 

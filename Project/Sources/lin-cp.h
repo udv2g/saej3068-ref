@@ -14,8 +14,6 @@ typedef enum {StartNull, RunNull, StartVer, RunVer, StartInit, RunInit, StartOp,
       StartErr, RunErr, StartSleep, RunSleep} SCHEDULE_PICKER;
 
 typedef enum {continueOnLIN, startLIN, stopLIN} SCHEDULE_PICKER_EVENTS;
-
-enum {FiftyHz = 1, SixtyHz, FiftyOrSixtyHz};
       
 void InitializeLINCP(void);
 void DetermineLINCPState(uint8_t ch, SCHEDULE_PICKER_EVENTS SchedulePickerMessage);

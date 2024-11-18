@@ -6,7 +6,8 @@
 //#include "sci.h"
 #include "timers.h"
 #include "globals.h"
-#include "j1939.h"
+#include "j1939.h" 
+#include "config.h"
 
 void init_hardware(void)  {
   configure_oscillator();
@@ -14,7 +15,7 @@ void init_hardware(void)  {
   InitADC();
   InitRTI();
   InitSCIBuffers();
-  SCIOpenCommunication(SCI2_BUF, UART_BAUD, TRUE, SCI_RIE_ON); // Initialize SCI2 with configured baud and interrupts
+  SCIOpenCommunication(SCI_BUF, UART_BAUD, TRUE, SCI_RIE_ON); // Initialize SCI with configured baud and interrupts
   init_pwm();
 #ifdef EV_CONFIG
   j1939_init_hardware();
@@ -26,6 +27,8 @@ void init_hardware(void)  {
  *******************************************************/
 
 uint8_t unpluggedCount = 0; 
+ 
+void _Startup(void);
  
 void near Cpu_SetStopMode() {
   
@@ -283,8 +286,8 @@ void init_io(void)  {
   DDR0AD_DDR0AD4 = OUTPUT;    //
 #endif  
   
-  
 #ifndef S12X
+
   DDR0AD_DDR0AD7 = OUTPUT;    //Relay_Control_B_Plus
   DDR0AD_DDR0AD6 = OUTPUT;    //Relay_Control_B_Minus
   DDR0AD_DDR0AD5 = OUTPUT;    //Relay_Control_A_Plus
@@ -303,7 +306,9 @@ void init_io(void)  {
   DDR1AD_DDR1AD4 = OUTPUT; PT1AD_PT1AD4 = 0;
   DDR0AD_DDR0AD3 = OUTPUT; PT0AD_PT0AD3 = 0;
   DDR0AD_DDR0AD0 = OUTPUT; PT0AD_PT0AD0 = 0;
+
 #else
+
   ATD0DIEN_IEN3 = 0;          //V_prox_B (disable digital input)
   ATD0DIEN_IEN2 = 0;          //V_prox_A (disable digital input)
   ATD0DIEN_IEN1 = 0;          //V_pilot_B (disable digital input)
@@ -317,6 +322,7 @@ void init_io(void)  {
   DDRB_DDRB2 = OUTPUT;        //PWM_Enable_B
   DDRB_DDRB1 = OUTPUT;        //PWM_Enable_A
   DDRB_DDRB0 = OUTPUT;        //CAN1_SLEEP 
+  
 #endif  
   
   PWM_ENABLE_A = 0;           //Enable PWM switch A
@@ -329,6 +335,7 @@ void init_io(void)  {
  ********************************************************/
 
 void init_pwm(void) {
+
   PWMPRCLK_PCKA = 0b011;      //PWM clock A 1/8 Fbus (3.0 MHz)          Use 0b100 (1/16) for 48MHz clock
   PWMSCLA = 15;               //3.0 MHz / (2 * 15) = 100 kHz
   PWMCAE_CAE4 = 0;            //set PWM4 to left aligned
@@ -343,6 +350,7 @@ void init_pwm(void) {
   PWMPER5 = 100;              //set period 100 kHz / 100 = 1 kHz
   PWMDTY5 = 50;               //set duty cycle to 50 / 100 = 50%
   PWMPOL_PPOL5 = 1;           //pin high for first part of duty cycle
+
 }
 
 /*******************************************************
